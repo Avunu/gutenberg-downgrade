@@ -20,9 +20,11 @@ final class BlockConfigTest extends UnitTestCase
         self::assertSame(BlockConfig::MODE_STATIC, $config->mode('core/paragraph'));
         self::assertSame(BlockConfig::MODE_DYNAMIC, $config->mode('core/archives'));
         self::assertSame(BlockConfig::MODE_CORE_RENDER, $config->mode('core/site-logo'));
-        self::assertSame(BlockConfig::MODE_SKIP, $config->mode('core/post-comments'));
-        self::assertNull($config->mode('core/list-item'));
-        self::assertContains('core/navigation-area', $config->hiddenFromInserter());
+        self::assertSame(BlockConfig::MODE_CORE_RENDER, $config->mode('core/navigation-link'));
+        self::assertSame(BlockConfig::MODE_SKIP, $config->mode('core/post-time-to-read'));
+        self::assertSame(BlockConfig::MODE_STATIC, $config->mode('core/list-item'));
+        self::assertNull($config->mode('core/navigation-area'), 'gone since 11.9');
+        self::assertSame(['core/table-of-contents'], $config->hiddenFromInserter());
     }
 
     public function testCuratedModesRequireAReason(): void
@@ -58,10 +60,10 @@ final class BlockConfigTest extends UnitTestCase
                 self::assertContains(
                     $mode,
                     [BlockConfig::MODE_STATIC, BlockConfig::MODE_SKIP],
-                    "{$name} has no PHP in 11.9 and cannot be {$mode}"
+                    "{$name} has no PHP in the release and cannot be {$mode}"
                 );
             } else {
-                self::assertNotSame(BlockConfig::MODE_STATIC, $mode, "{$name} ships PHP in 11.9; static would drop its render callback");
+                self::assertNotSame(BlockConfig::MODE_STATIC, $mode, "{$name} ships PHP in the release; static would drop its render callback");
             }
         }
 

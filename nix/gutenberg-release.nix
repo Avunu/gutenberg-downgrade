@@ -7,16 +7,16 @@
 # "helpfully" bump it. Change `version` and `hash` together.
 { fetchzip }:
 let
-  version = "11.9.1";
+  version = "18.5.0";
 in
 fetchzip {
   name = "gutenberg-plugin-${version}";
   url = "https://downloads.wordpress.org/plugin/gutenberg.${version}.zip";
   # Hash of the unpacked tree (fetchzip strips the single `gutenberg/` root).
-  hash = "sha256-DHE8ciC31MPx5x5D057EINauLjUBv9vTu5wIN5B2j0U=";
+  hash = "sha256-Euhm20y6uI0DqUrtnr1jbmVTueg6m/ftspKQe0PNHZo=";
   passthru = {
     inherit version;
     # sha256 of the zip file itself, for SOURCE.txt / provenance.
-    zipSha256 = "80b88509dcf2910531bc9ae9ab22dc8a4d5cbe0c55fdb85fa664b6c3528acc11";
+    zipSha256 = "3e17d219ddd5b11cb436a2a2661fd88de7cd7315b4d927a82c5e2c73c74db23a";
   };
 }

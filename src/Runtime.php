@@ -9,13 +9,13 @@ namespace GutenbergDowngrade;
  *
  * The public front end, cron and WP-CLI keep WordPress' own block library:
  * only wp-admin screens (minus the ones that need the modern package stack),
- * REST requests and admin-ajax get the 11.9 editor.
+ * REST requests and admin-ajax get the 18.5 editor.
  */
 final class Runtime
 {
     /**
-     * Admin screens built on packages that do not exist in Gutenberg 11.9
-     * (@wordpress/boot, dataviews, the modern edit-site). They keep core's stack.
+     * Admin screens built on packages that do not exist in Gutenberg 18.5
+     * (@wordpress/boot, dataviews, the 7.x edit-site). They keep core's stack.
      */
     public const DEFAULT_BYPASS_PAGES = [
         'site-editor.php',

@@ -8,7 +8,7 @@
  *   php bin/generate-manifest.php --assets <dir> --gutenberg-version <x.y.z> [--out <file>]
  *
  * <dir> is the tree nix/gutenberg-assets.nix assembles: the release's build/
- * directory plus vendor/react{,-dom}{,.min}.js. The manifest is what the plugin
+ * directory plus vendor/react{,-dom,-jsx-runtime}{,.min}.js. The manifest is what the plugin
  * reads at runtime, so every path it records is verified to exist here — a
  * missing file fails the build, never a request.
  *
@@ -18,6 +18,7 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/../src/Manifest.php';
 require_once __DIR__ . '/../src/ManifestGenerator.php';
 
 use GutenbergDowngrade\ManifestGenerator;

@@ -32,12 +32,11 @@ final class Plugin
         $manifest = Assets::manifest();
         $config = BlockConfig::load();
 
-        CoreNeutralizer::register();
+        CoreNeutralizer::register($manifest);
         ScriptOverrides::register($manifest, $config);
         StyleOverrides::register();
         BlockRegistry::register($manifest, $config);
         EditorSettings::register();
         Translations::register();
-        RestCompat::register();
     }
 }

@@ -1,4 +1,4 @@
-# Static audit of the vendored Gutenberg 11.9 block PHP against current core.
+# Static audit of the vendored Gutenberg 18.5 block PHP against current core.
 #
 # Level 0 on purpose: the question is "does this 2021 code call anything that
 # no longer exists?" (undefined functions/classes/methods, wrong arity), not
@@ -30,3 +30,9 @@ parameters:
         -
             message: '#Result of function get_calendar \(void\) is used#'
             path: ../../assets/gutenberg/build/block-library/blocks/calendar.php
+        # Two 18.5 functions fall off the end without a return on their
+        # fallback paths (the callers cope with null). Identical to the code
+        # WordPress 6.6 shipped in wp-includes/blocks/navigation.php.
+        -
+            message: '#should return (WP_Block_List|object) but return statement is missing#'
+            path: ../../assets/gutenberg/build/block-library/blocks/navigation.php

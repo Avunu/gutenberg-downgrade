@@ -17,11 +17,14 @@ use RuntimeException;
  *     gutenbergVersion: string,
  *     packages: array<string, PackageEntry>,
  *     blocks: array<string, BlockEntry>,
- *     vendor: array{react: VendorEntry, react-dom: VendorEntry}
+ *     vendor: array{react: VendorEntry, react-dom: VendorEntry, react-jsx-runtime: VendorEntry}
  * }
  */
 final class Manifest
 {
+    /** The script handles served from vendor/, as core registers them. */
+    public const VENDOR_LIBRARIES = ['react', 'react-dom', 'react-jsx-runtime'];
+
     /**
      * @param ManifestArray $data
      */
@@ -105,8 +108,9 @@ final class Manifest
             throw new RuntimeException('manifest.vendor is missing');
         }
         $vendor = [
-            'react'     => self::vendorEntry($vendorRaw, 'react'),
-            'react-dom' => self::vendorEntry($vendorRaw, 'react-dom'),
+            'react'             => self::vendorEntry($vendorRaw, 'react'),
+            'react-dom'         => self::vendorEntry($vendorRaw, 'react-dom'),
+            'react-jsx-runtime' => self::vendorEntry($vendorRaw, 'react-jsx-runtime'),
         ];
 
         return new self([
@@ -144,7 +148,7 @@ final class Manifest
     }
 
     /**
-     * @param 'react'|'react-dom' $library
+     * @param 'react'|'react-dom'|'react-jsx-runtime' $library
      * @return VendorEntry
      */
     public function vendor(string $library): array

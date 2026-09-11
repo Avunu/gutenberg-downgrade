@@ -5,7 +5,7 @@ version: 2
 # actually cutting a release. Dep bumps use the `chore` type so they never force a release
 # on their own — they ride along with the next real release.
 #
-# The Gutenberg 11.9.1 pin (nix/gutenberg-release.nix) is not a dependency in any of
+# The Gutenberg 18.5.0 pin (nix/gutenberg-release.nix) is not a dependency in any of
 # these ecosystems and is never touched by Dependabot.
 updates:
   - package-ecosystem: github-actions

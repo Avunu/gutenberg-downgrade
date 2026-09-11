@@ -14,6 +14,7 @@ use RuntimeException;
  * @phpstan-import-type ManifestArray from Manifest
  * @phpstan-import-type PackageEntry from Manifest
  * @phpstan-import-type BlockEntry from Manifest
+ * @phpstan-import-type VendorEntry from Manifest
  */
 final class ManifestGenerator
 {
@@ -162,18 +163,27 @@ final class ManifestGenerator
     }
 
     /**
-     * @return array{react: array{prod: string, dev: string}, react-dom: array{prod: string, dev: string}}
+     * @return array{react: VendorEntry, react-dom: VendorEntry, react-jsx-runtime: VendorEntry}
      */
     private static function vendor(string $assetsDir): array
     {
-        foreach (['vendor/react.min.js', 'vendor/react.js', 'vendor/react-dom.min.js', 'vendor/react-dom.js'] as $file) {
-            self::requireFile($assetsDir, $file);
-        }
-
         return [
-            'react'     => ['prod' => 'vendor/react.min.js', 'dev' => 'vendor/react.js'],
-            'react-dom' => ['prod' => 'vendor/react-dom.min.js', 'dev' => 'vendor/react-dom.js'],
+            'react'             => self::vendorEntry($assetsDir, 'react'),
+            'react-dom'         => self::vendorEntry($assetsDir, 'react-dom'),
+            'react-jsx-runtime' => self::vendorEntry($assetsDir, 'react-jsx-runtime'),
         ];
+    }
+
+    /**
+     * @return VendorEntry
+     */
+    private static function vendorEntry(string $assetsDir, string $library): array
+    {
+        $entry = ['prod' => "vendor/{$library}.min.js", 'dev' => "vendor/{$library}.js"];
+        self::requireFile($assetsDir, $entry['prod']);
+        self::requireFile($assetsDir, $entry['dev']);
+
+        return $entry;
     }
 
     private static function requireFile(string $assetsDir, string $relative): void

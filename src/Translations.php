@@ -10,7 +10,7 @@ namespace GutenbergDowngrade;
  * load_script_textdomain() keys a script's JSON translation file by the md5
  * of its path relative to the plugins directory, so bundles served from this
  * plugin never match the core language packs. Point them at the file core
- * would have used for the same package; strings that changed since 11.9 stay
+ * would have used for the same package; strings that changed since 18.5 stay
  * untranslated.
  */
 final class Translations

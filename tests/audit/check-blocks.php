@@ -2,7 +2,7 @@
 <?php
 
 /**
- * Reconciles the static audit of the vendored 11.9 block PHP with
+ * Reconciles the static audit of the vendored Gutenberg block PHP with
  * config/blocks.php.
  *
  * Inputs:
@@ -114,13 +114,13 @@ foreach ($manifest->blocks() as $name => $block) {
     $blockFindings = $php !== null ? ($findings[$php] ?? []) : [];
 
     if ($php === null && in_array($mode, [BlockConfig::MODE_DYNAMIC, BlockConfig::MODE_CORE_RENDER], true)) {
-        $failures[] = "{$name} is {$mode} but 11.9 ships no PHP for it";
+        $failures[] = "{$name} is {$mode} but the release ships no PHP for it";
     }
     if ($php !== null && $mode === BlockConfig::MODE_STATIC) {
-        $failures[] = "{$name} is static but 11.9 ships {$php} (its render callback would be lost)";
+        $failures[] = "{$name} is static but the release ships {$php} (its render callback would be lost)";
     }
     if ($blockFindings !== [] && $mode === BlockConfig::MODE_DYNAMIC) {
-        $failures[] = "{$name} is dynamic but its 11.9 PHP has findings:\n    " . implode("\n    ", $blockFindings);
+        $failures[] = "{$name} is dynamic but its PHP has findings:\n    " . implode("\n    ", $blockFindings);
     }
     if ($blockFindings === [] && in_array($mode, BlockConfig::CURATED_MODES, true) && $php !== null) {
         $notes[] = "{$name} is {$mode} with a clean file — reason on record: "
@@ -130,7 +130,7 @@ foreach ($manifest->blocks() as $name => $block) {
 
 $dynamic = count(array_filter($config->entries(), static fn(array $rule): bool => $rule['mode'] === BlockConfig::MODE_DYNAMIC));
 printf(
-    "Audited %d blocks (%d with 11.9 PHP, %d served by it); %d file(s) with findings.\n",
+    "Audited %d blocks (%d with release PHP, %d served by it); %d file(s) with findings.\n",
     count($manifest->blocks()),
     count(array_filter($manifest->blocks(), static fn(array $b): bool => $b['php'] !== null)),
     $dynamic,

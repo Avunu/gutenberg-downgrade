@@ -3,7 +3,7 @@
 /**
  * Plugin Name:       Gutenberg Downgrade
  * Plugin URI:        https://github.com/Avunu/gutenberg-downgrade
- * Description:       Loads the Gutenberg 11.9.1 block editor (the WordPress 5.9 series) on current WordPress releases, for sites whose page builder clashes with the modern editor. Configure via wp-config.php — no admin settings.
+ * Description:       Loads the Gutenberg 18.5 block editor (the WordPress 6.6 series) on current WordPress releases, for sites whose page builder clashes with the modern editor. Configure via wp-config.php — no admin settings.
  * x-release-please-start-version
  * Version:           0.1.1
  * x-release-please-end
@@ -21,8 +21,8 @@
  * WHAT IT DOES
  * ============================================================================
  * On wp-admin screens, REST requests and admin-ajax it serves the `wp-*`
- * package scripts and styles, React 17.0.1 and the core-block definitions from
- * the bundled Gutenberg 11.9.1 build instead of WordPress core's. The public
+ * package scripts and styles, React 18.3.1 and the core-block definitions from
+ * the bundled Gutenberg 18.5.0 build instead of WordPress core's. The public
  * front end, cron and WP-CLI keep core's block library untouched. The Site
  * Editor, Font Library and Connectors screens are excluded (they need the
  * modern package stack).
@@ -39,7 +39,7 @@
  *       options-connectors.php.
  *
  * Filters: gutenberg_downgrade_active, gutenberg_downgrade_bypass_pages,
- * gutenberg_downgrade_retired_handles, gutenberg_downgrade_editor_settings.
+ * gutenberg_downgrade_editor_settings.
  */
 
 declare(strict_types=1);

@@ -5,7 +5,7 @@ name: Check
 # before the zip is published. Jobs:
 #   • types      — oxfmt + oxlint + tsc over the browser shim and the playground harness
 #   • nix-checks — the hermetic derivations: phpstan (level 8), phpcs (PSR-12), the PHPUnit
-#                  unit suite (on PHP 8.4 and the 8.3 floor), the audit of the vendored 11.9
+#                  unit suite (on PHP 8.4 and the 8.3 floor), the audit of the vendored 18.5
 #                  block PHP, the asset manifest and the plugin header
 #   • playground — the built plugin mounted into WordPress Playground: PHP-level assertions
 #                  and a headless-Chrome pass over the editor, across WordPress versions

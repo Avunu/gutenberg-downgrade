@@ -20,6 +20,7 @@ final class StyleOverridesTest extends UnitTestCase
         parent::setUp();
         Functions\when('wp_should_load_separate_core_block_assets')->justReturn(false);
         Functions\when('wp_theme_has_theme_json')->justReturn(false);
+        Functions\when('current_theme_supports')->justReturn(true);
         $GLOBALS['editor_styles'] = [];
     }
 
@@ -36,7 +37,7 @@ final class StyleOverridesTest extends UnitTestCase
         return $styles;
     }
 
-    public function testReplacesThePackageStylesheetsWithTheElevenNineGraph(): void
+    public function testReplacesThePackageStylesheetsWithTheEighteenFiveGraph(): void
     {
         $this->requireAssets();
         $styles = $this->coreStyles();
@@ -46,18 +47,18 @@ final class StyleOverridesTest extends UnitTestCase
         $components = $styles->registered['wp-components'];
         self::assertSame(self::BASE . 'build/components/style.css', $components->src);
         self::assertSame(['dashicons'], $components->deps);
-        self::assertSame('11.9.1', $components->ver);
+        self::assertSame('18.5.0', $components->ver);
         self::assertSame('replace', $components->extra['rtl']);
-        self::assertArrayNotHasKey('suffix', $components->extra, "11.9 ships style-rtl.css, not style-rtl.min.css");
+        self::assertArrayNotHasKey('suffix', $components->extra, "18.5 ships style-rtl.css, not style-rtl.min.css");
 
         self::assertSame(
-            ['wp-components', 'wp-block-editor', 'wp-editor', 'wp-edit-blocks', 'wp-block-library', 'wp-nux'],
+            ['wp-components', 'wp-block-editor', 'wp-editor', 'wp-edit-blocks', 'wp-block-library', 'wp-commands', 'wp-preferences'],
             $styles->registered['wp-edit-post']->deps
         );
         self::assertSame(self::BASE . 'build/block-library/style.css', $styles->registered['wp-block-library']->src);
         self::assertStringEndsWith('build/block-library/style.css', $styles->registered['wp-block-library']->extra['path']);
 
-        // Handles 11.9 never had are not touched: wp-admin depends on wp-base-styles.
+        // Handles 18.5 never had are not touched: wp-admin depends on wp-base-styles.
         self::assertSame('/wp-includes/css/dist/base-styles/admin-schemes.min.css', $styles->registered['wp-base-styles']->src);
         self::assertSame('/wp-includes/css/dist/theme/design-tokens.min.css', $styles->registered['wp-theme']->src);
 
@@ -68,16 +69,24 @@ final class StyleOverridesTest extends UnitTestCase
 
     public function testEditBlocksDependenciesFollowTheThemeCapabilities(): void
     {
-        $base = ['wp-components', 'wp-editor', 'wp-reset-editor-styles', 'wp-block-library', 'wp-reusable-blocks'];
+        $base = [
+            'wp-components',
+            'wp-reset-editor-styles',
+            'wp-block-library',
+            'wp-patterns',
+            'wp-reusable-blocks',
+            'wp-block-editor-content',
+        ];
 
         self::assertSame(
             [...$base, 'wp-editor-classic-layout-styles', 'wp-block-library-theme'],
-            StyleOverrides::editBlocksDeps(false, false),
-            'classic theme without editor styles: layout defaults + opinionated block styles'
+            StyleOverrides::editBlocksDeps(false, true, false),
+            'classic theme opting into block styles, no editor styles: layout defaults + opinionated block styles'
         );
-        self::assertSame([...$base, 'wp-block-library-theme'], StyleOverrides::editBlocksDeps(true, false));
-        self::assertSame([...$base, 'wp-editor-classic-layout-styles'], StyleOverrides::editBlocksDeps(false, true));
-        self::assertSame($base, StyleOverrides::editBlocksDeps(true, true));
+        self::assertSame([...$base, 'wp-block-library-theme'], StyleOverrides::editBlocksDeps(true, true, false));
+        self::assertSame([...$base, 'wp-editor-classic-layout-styles'], StyleOverrides::editBlocksDeps(false, true, true));
+        self::assertSame([...$base, 'wp-editor-classic-layout-styles'], StyleOverrides::editBlocksDeps(false, false, false), 'no wp-block-styles support: never the opinionated styles');
+        self::assertSame($base, StyleOverrides::editBlocksDeps(true, true, true));
     }
 
     public function testBlockLibraryUsesTheCommonSubsetWhenCoreSplitsBlockStyles(): void

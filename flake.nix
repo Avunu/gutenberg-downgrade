@@ -1,5 +1,5 @@
 {
-  description = "Gutenberg Downgrade — load the Gutenberg 11.9.1 block editor on current WordPress";
+  description = "Gutenberg Downgrade — load the Gutenberg 18.5 block editor on current WordPress";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -96,7 +96,7 @@
         wpRequires = requireMajorMinor "Requires at least" (pluginHeader "Requires at least");
 
         # ------------------------------------------------------------------ #
-        # The Gutenberg 11.9.1 release and the asset tree assembled from it.  #
+        # The Gutenberg 18.5.0 release and the asset tree assembled from it.  #
         # ------------------------------------------------------------------ #
         gutenbergRelease = pkgs.callPackage ./nix/gutenberg-release.nix { };
         gutenbergAssets = pkgs.callPackage ./nix/gutenberg-assets.nix {
@@ -447,7 +447,7 @@
           # The same suite on the declared floor (Requires PHP: 8.3).
           unit-php83 = unitCheck "check-unit-php83" php83;
 
-          # Static audit of the vendored 11.9 block PHP against current core:
+          # Static audit of the vendored 18.5 block PHP against current core:
           # undefined functions/classes (PHPStan level 0 with the WordPress
           # stubs) and PHP 8.4 compile-time deprecations (php -l). Every
           # finding must be answered by config/blocks.php.

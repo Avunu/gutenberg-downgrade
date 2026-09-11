@@ -44,7 +44,7 @@ export function pluginDir(): string {
 
 /**
  * Boot a playground server with the built plugin mounted and activated on a classic theme, WP_DEBUG
- * on and displayed so PHP notices from the vendored 11.9 code surface in the page. Dispose with
+ * on and displayed so PHP notices from the vendored 18.5 code surface in the page. Dispose with
  * `await server[Symbol.asyncDispose]()`.
  */
 export async function bootPlayground({
@@ -58,7 +58,7 @@ export async function bootPlayground({
 		login: true,
 		quiet: true,
 		// Playground already defaults WP_DEBUG on; display it too so PHP notices
-		// from the vendored 11.9 code surface in the pages the browser pass loads.
+		// from the vendored 18.5 code surface in the pages the browser pass loads.
 		"define-bool": { WP_DEBUG_DISPLAY: true },
 		mount: [
 			{ hostPath: pluginDir(), vfsPath: PLUGIN_VFS },
