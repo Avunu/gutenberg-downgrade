@@ -211,26 +211,15 @@ if (!class_exists('WP_Block_Patterns_Registry')) {
         {
             return self::$items;
         }
-    }
-}
 
-if (!class_exists('WP_Block_Pattern_Categories_Registry')) {
-    final class WP_Block_Pattern_Categories_Registry
-    {
-        /** @var list<array<string, mixed>> */
-        public static array $items = [];
-
-        public static function get_instance(): self
+        public function unregister(string $pattern_name): bool
         {
-            return new self();
-        }
+            self::$items = array_values(array_filter(
+                self::$items,
+                static fn(array $item): bool => ($item['name'] ?? null) !== $pattern_name
+            ));
 
-        /**
-         * @return list<array<string, mixed>>
-         */
-        public function get_all_registered(bool $outside_init_only = false): array
-        {
-            return self::$items;
+            return true;
         }
     }
 }

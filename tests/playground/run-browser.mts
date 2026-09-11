@@ -1,6 +1,6 @@
 // Test B — headless Chrome against the booted WordPress. This is the only test
-// that exercises the 11.9 bundles as a browser would: the editor must mount,
-// throw nothing, run on React 17, and round-trip a post through save and reload.
+// that exercises the 18.5 bundles as a browser would: the editor must mount,
+// throw nothing, run on React 18.3, and round-trip a post through save and reload.
 import { chromium, type Page } from "playwright-core";
 import {
 	bootPlayground,
@@ -110,6 +110,13 @@ async function waitForEditor(page: Page): Promise<void> {
 		{ timeout: 60_000 },
 	);
 	await page.waitForSelector(".edit-post-visual-editor", { timeout: 60_000 });
+	// The welcome guide overlays the canvas on a fresh user; it would swallow
+	// every click below.
+	const close = page.locator(".components-modal__screen-overlay .components-modal__header button");
+	if (await close.count()) {
+		await close.first().click();
+		await page.waitForSelector(".components-modal__screen-overlay", { state: "detached" });
+	}
 }
 
 let server;
@@ -134,17 +141,30 @@ try {
 	await visitClean(page, w, `${url}/wp-admin/post-new.php`, "post-new.php");
 	await waitForEditor(page);
 
-	const facts = await page.evaluate(() => {
+	// Package exports a page builder built for the WordPress 6.1–6.6 packages
+	// reads on the post editor (what Cwicly 1.4.4's bundle binds), as `wp.<pkg>.<name>`.
+	const BUILDER_EXPORTS = [
+		"editPost.PluginSidebar",
+		"editPost.PluginSidebarMoreMenuItem",
+		"preferences.store",
+		"blockEditor.__experimentalUseBlockPreview",
+		"blockEditor.useHasRecursion",
+		"blockEditor.__experimentalLinkControl",
+		"components.__experimentalNavigationBackButton",
+		"compose.useCopyToClipboard",
+		"coreData.useEntityRecord",
+		"keyboardShortcuts.useShortcut",
+	];
+	const facts = await page.evaluate((wanted: string[]) => {
 		const g = globalThis as unknown as {
 			React: { version: string };
-			wp: {
+			wp: Record<string, Record<string, unknown> | undefined> & {
 				blocks: {
 					getBlockType: (
 						n: string,
 					) => { apiVersion?: number; supports?: { inserter?: boolean } } | undefined;
 					getBlockTypes: () => unknown[];
 				};
-				editPost: Record<string, unknown>;
 			};
 		};
 		return {
@@ -154,12 +174,17 @@ try {
 			blocksSrc: (document.getElementById("wp-blocks-js") as HTMLScriptElement | null)?.src ?? "",
 			paragraphApi: g.wp.blocks.getBlockType("core/paragraph")?.apiVersion,
 			listItem: g.wp.blocks.getBlockType("core/list-item"),
-			navigationAreaInserter: g.wp.blocks.getBlockType("core/navigation-area")?.supports?.inserter,
+			accordion: g.wp.blocks.getBlockType("core/accordion"),
+			timeToRead: g.wp.blocks.getBlockType("core/post-time-to-read"),
+			tocInserter: g.wp.blocks.getBlockType("core/table-of-contents")?.supports?.inserter,
 			blockCount: g.wp.blocks.getBlockTypes().length,
-			hasPluginTemplateSettingPanel: "PluginTemplateSettingPanel" in g.wp.editPost,
+			missingExports: wanted.filter((path) => {
+				const [pkg, name] = path.split(".") as [string, string];
+				return g.wp[pkg]?.[name] === undefined;
+			}),
 		};
-	});
-	t.check("editor runs on React 17.0.1", facts.react === "17.0.1", facts.react);
+	}, BUILDER_EXPORTS);
+	t.check("editor runs on React 18.3.1", facts.react === "18.3.1", facts.react);
 	t.check(
 		"wp-edit-post is served from the plugin",
 		facts.editPostSrc.includes(`/plugins/${PLUGIN_SLUG}/assets/gutenberg/build/edit-post/`),
@@ -171,29 +196,40 @@ try {
 		facts.blocksSrc,
 	);
 	t.check(
-		"core/paragraph registered client-side as apiVersion 2",
-		facts.paragraphApi === 2,
+		"core/paragraph registered client-side as apiVersion 3",
+		facts.paragraphApi === 3,
 		String(facts.paragraphApi),
 	);
-	t.check("core/list-item (7.x-only) is not registered client-side", facts.listItem === undefined);
+	t.check("core/list-item is registered client-side", facts.listItem !== undefined);
+	t.check("core/accordion (7.x-only) is not registered client-side", facts.accordion === undefined);
 	t.check(
-		"core/navigation-area is hidden from the inserter",
-		facts.navigationAreaInserter === false,
-		String(facts.navigationAreaInserter),
+		"core/post-time-to-read is registered client-side (core backs it server-side)",
+		facts.timeToRead !== undefined,
 	);
 	t.check(
-		"a 5.9-era number of block types is registered",
-		facts.blockCount > 55 && facts.blockCount < 80,
+		"core/table-of-contents is hidden from the inserter",
+		facts.tocInserter === false,
+		String(facts.tocInserter),
+	);
+	t.check(
+		"a 6.6-era number of block types is registered",
+		facts.blockCount > 85 && facts.blockCount < 110,
 		String(facts.blockCount),
 	);
-	t.check("wp.editPost is the 11.9 API surface", !facts.hasPluginTemplateSettingPanel);
+	t.check(
+		"every export a 6.6-era page builder reads is present",
+		facts.missingExports.length === 0,
+		facts.missingExports.join(","),
+	);
 
 	// Insert paragraph + list + quote (the attribute shapes that differ most
 	// from current core), save, and check what reached the database.
 	const postId = await page.evaluate(async () => {
 		const g = globalThis as unknown as {
 			wp: {
-				blocks: { createBlock: (n: string, a: Record<string, unknown>) => unknown };
+				blocks: {
+					createBlock: (n: string, a: Record<string, unknown>, inner?: unknown[]) => unknown;
+				};
 				data: {
 					dispatch: (s: string) => {
 						insertBlocks: (b: unknown[]) => Promise<void>;
@@ -213,9 +249,14 @@ try {
 		await data
 			.dispatch("core/block-editor")
 			.insertBlocks([
-				blocks.createBlock("core/paragraph", { content: "Hello from 11.9" }),
-				blocks.createBlock("core/list", { ordered: false, values: "<li>One</li><li>Two</li>" }),
-				blocks.createBlock("core/quote", { value: "<p>Quoted</p>", citation: "Cited" }),
+				blocks.createBlock("core/paragraph", { content: "Hello from 18.5" }),
+				blocks.createBlock("core/list", { ordered: false }, [
+					blocks.createBlock("core/list-item", { content: "One" }),
+					blocks.createBlock("core/list-item", { content: "Two" }),
+				]),
+				blocks.createBlock("core/quote", { citation: "Cited" }, [
+					blocks.createBlock("core/paragraph", { content: "Quoted" }),
+				]),
 			]);
 		data.dispatch("core/editor").editPost({ title: "Round trip" });
 		await data.dispatch("core/editor").savePost();
@@ -242,10 +283,10 @@ try {
 		saved.value.content.slice(0, 120),
 	);
 	t.check(
-		"saved content has an 11.9-style list (single ul, no list-item blocks)",
+		"saved content has a 6.6-style list (list-item inner blocks)",
 		saved.value.content.includes("<!-- wp:list -->") &&
-			saved.value.content.includes("<li>One</li>") &&
-			!saved.value.content.includes("wp:list-item"),
+			/<!-- wp:list-item -->\s*<li>One<\/li>/.test(saved.value.content),
+		saved.value.content.slice(0, 300),
 	);
 	t.check(
 		"saved content has the quote with its citation",
@@ -253,7 +294,7 @@ try {
 	);
 	t.check("saved title", saved.value.title === "Round trip", saved.value.title);
 
-	// Reopen: every block must validate against the 11.9 definitions.
+	// Reopen: every block must validate against the 18.5 definitions.
 	await visitClean(
 		page,
 		w,
@@ -278,21 +319,43 @@ try {
 		reopened.join(","),
 	);
 
-	// The inserter and its Patterns tab (patterns come from the settings again).
-	await page.click(".edit-post-header-toolbar__inserter-toggle");
+	// The inserter and its Patterns tab (patterns come over REST; 18.5 lists
+	// categories first).
+	await page.click(".editor-document-tools__inserter-toggle");
 	await page.waitForSelector(".block-editor-inserter__menu", { timeout: 15_000 });
-	const patternsTab = page.getByRole("tab", { name: "Patterns" });
-	if (await patternsTab.count()) {
-		await patternsTab.click();
-		await page.waitForTimeout(1000);
-	}
+	await page.getByRole("tab", { name: "Patterns" }).click();
+	// Categories are tabs; the list behind one renders its previews lazily.
+	await page
+		.locator(".block-editor-inserter__menu")
+		.getByRole("tab", { name: "All", exact: true })
+		.click();
+	await page
+		.waitForSelector(".block-editor-block-patterns-list__list-item", { timeout: 20_000 })
+		.catch(() => undefined);
 	t.check(
 		"opening the inserter and its Patterns tab raised no errors",
 		w.pageErrors.length === 0 && w.consoleErrors.length === 0,
 		[...w.pageErrors, ...w.consoleErrors].slice(0, 3).join(" | "),
 	);
 	const patternCount = await page.locator(".block-editor-block-patterns-list__list-item").count();
-	t.check("theme patterns are listed", patternCount > 0, String(patternCount));
+	t.check("patterns are listed", patternCount > 0, String(patternCount));
+	const patternNames = await page.evaluate(() =>
+		(
+			globalThis as unknown as {
+				wp: { data: { select: (s: string) => { getBlockPatterns: () => { name: string }[] } } };
+			}
+		).wp.data
+			.select("core")
+			.getBlockPatterns()
+			.map((p) => p.name),
+	);
+	t.check(
+		"the client fetched theme and core query patterns, but no 7.x overlays",
+		patternNames.some((n) => n.startsWith("twentytwentyone/")) &&
+			patternNames.includes("core/query-standard-posts") &&
+			!patternNames.some((n) => n.startsWith("core/navigation-overlay")),
+		patternNames.filter((n) => n.startsWith("core/")).join(","),
+	);
 
 	// ---- other package-driven admin screens --------------------------------
 	await visitClean(page, w, `${url}/wp-admin/edit.php?post_type=wp_block`, "reusable blocks list");

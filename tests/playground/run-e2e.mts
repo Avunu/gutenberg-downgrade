@@ -3,7 +3,7 @@
 // Each block simulates a request context (an admin screen, the front end, a
 // REST request) by defining the constants WordPress reads before wp-load, then
 // inspects what the plugin registered: script/style handles, the block
-// registry, the editor settings, and that every block the 11.9 PHP serves
+// registry, the editor settings, and that every block the 18.5 PHP serves
 // renders without PHP deprecations.
 import {
 	bootPlayground,
@@ -38,15 +38,19 @@ interface AdminState {
 	scripts: Record<string, Dependency | null>;
 	styles: Record<string, Dependency | null>;
 	commandPaletteHooked: boolean;
-	corePatterns: boolean;
+	patterns: string[];
 	blocks: Record<
 		string,
 		{ apiVersion: number | null; render: string | null; attributes: Record<string, unknown> } | null
 	>;
-	serverSettings: Record<string, { apiVersion?: number }>;
+	serverSettings: Record<string, { apiVersion?: number; attributes?: Record<string, unknown> }>;
 	editorSettings: Record<string, unknown>;
-	routes: string[];
 }
+
+// 18.5 block.json still spells the content role `__experimentalRole`; core 7.1
+// says `role`. Block supports add `align` on both, so that is no marker.
+const is185 = (b: { attributes: Record<string, unknown> } | null | undefined): boolean =>
+	"__experimentalRole" in ((b?.attributes["content"] as Record<string, unknown> | undefined) ?? {});
 
 let server;
 try {
@@ -69,8 +73,8 @@ try {
 	t.check("the plugin is active", env.value.active);
 	t.check("a classic theme is active", !env.value.blockTheme, env.value.theme);
 	t.check(
-		"the vendored build is Gutenberg 11.9.1",
-		env.value.gutenberg === "11.9.1",
+		"the vendored build is Gutenberg 18.5.0",
+		env.value.gutenberg === "18.5.0",
 		env.value.gutenberg,
 	);
 
@@ -105,9 +109,11 @@ try {
 				'wp-block-library' => $dep($scripts, 'wp-block-library'),
 				'react' => $dep($scripts, 'react'),
 				'react-dom' => $dep($scripts, 'react-dom'),
+				'react-jsx-runtime' => $dep($scripts, 'react-jsx-runtime'),
 				'wp-commands' => $dep($scripts, 'wp-commands'),
 				'wp-core-commands' => $dep($scripts, 'wp-core-commands'),
 				'wp-private-apis' => $dep($scripts, 'wp-private-apis'),
+				'wp-preferences' => $dep($scripts, 'wp-preferences'),
 			],
 			'styles' => [
 				'wp-edit-post' => $dep($styles, 'wp-edit-post'),
@@ -116,30 +122,27 @@ try {
 				'wp-base-styles' => $dep($styles, 'wp-base-styles'),
 			],
 			'commandPaletteHooked' => has_action('admin_enqueue_scripts', 'wp_enqueue_command_palette_assets') !== false,
-			'corePatterns' => (bool) current_theme_supports('core-block-patterns'),
+			'patterns' => array_column(WP_Block_Patterns_Registry::get_instance()->get_all_registered(), 'name'),
 			'blocks' => [
 				'core/paragraph' => $block('core/paragraph'),
 				'core/quote' => $block('core/quote'),
 				'core/list' => $block('core/list'),
 				'core/archives' => $block('core/archives'),
+				'core/image' => $block('core/image'),
 				'core/site-logo' => $block('core/site-logo'),
 				'core/legacy-widget' => $block('core/legacy-widget'),
 				'core/post-comments' => $block('core/post-comments'),
 				'core/list-item' => $block('core/list-item'),
-				'core/navigation-area' => $block('core/navigation-area'),
+				'core/navigation-link' => $block('core/navigation-link'),
+				'core/post-time-to-read' => $block('core/post-time-to-read'),
+				'core/accordion' => $block('core/accordion'),
 			],
 			'serverSettings' => array_intersect_key(get_block_editor_server_block_settings(), array_flip(['core/paragraph', 'core/image'])),
 			'editorSettings' => [
-				'fse' => $settings['__unstableEnableFullSiteEditingBlocks'] ?? null,
-				'templateMode' => $settings['supportsTemplateMode'] ?? null,
+				'keys' => array_keys($settings),
 				'paletteOrigins' => array_keys($settings['__experimentalFeatures']['color']['palette'] ?? []),
-				'fontSizeOrigins' => array_keys($settings['__experimentalFeatures']['typography']['fontSizes'] ?? []),
-				'patterns' => array_column($settings['__experimentalBlockPatterns'] ?? [], 'name'),
-				'patternCategories' => is_array($settings['__experimentalBlockPatternCategories'] ?? null),
-				'defaultEditorStyles' => strlen($settings['defaultEditorStyles'][0]['css'] ?? ''),
-				'editorAssets' => in_array(true, array_map(static fn($s) => str_starts_with($s, 'window.__editorAssets'), $scripts->registered['wp-block-editor']->extra['before'] ?? []), true),
+				'resolvedAssets' => is_array($settings['__unstableResolvedAssets'] ?? null),
 			],
-			'routes' => array_values(array_filter(array_keys(rest_get_server()->get_routes()), static fn(string $r): bool => str_starts_with($r, '/__experimental'))),
 		];`,
 		{ adminPage: "post.php" },
 	);
@@ -152,8 +155,8 @@ try {
 		editPost?.src,
 	);
 	t.check(
-		"wp-edit-post carries the 11.9 content hash as its version",
-		/^[0-9a-f]{32}$/.test(String(editPost?.ver)),
+		"wp-edit-post carries the 18.5 content hash as its version",
+		/^[0-9a-f]{20,32}$/.test(String(editPost?.ver)),
 		String(editPost?.ver),
 	);
 	t.check(
@@ -166,14 +169,24 @@ try {
 	);
 	t.check("wp-edit-post prints in the footer", editPost?.extra["group"] === 1);
 	t.check(
-		"React is the vendored 17.0.1",
-		a.scripts["react"]?.ver === "17.0.1" &&
+		"React is the vendored 18.3.1",
+		a.scripts["react"]?.ver === "18.3.1" &&
 			a.scripts["react"]?.src.includes(`${pluginUrl}vendor/react.min.js`),
 		String(a.scripts["react"]?.src),
 	);
 	t.check(
-		"react-dom depends on react",
-		JSON.stringify(a.scripts["react-dom"]?.deps) === '["react"]',
+		"react-dom and the JSX runtime depend on react",
+		JSON.stringify(a.scripts["react-dom"]?.deps) === '["react"]' &&
+			JSON.stringify(a.scripts["react-jsx-runtime"]?.deps) === '["react"]' &&
+			(a.scripts["react-jsx-runtime"]?.src.includes(
+				`${pluginUrl}vendor/react-jsx-runtime.min.js`,
+			) ??
+				false),
+		String(a.scripts["react-jsx-runtime"]?.src),
+	);
+	t.check(
+		"wp-preferences keeps its persistence dependency",
+		a.scripts["wp-preferences"]?.deps.includes("wp-preferences-persistence") ?? false,
 	);
 	t.check(
 		"wp-block-library still depends on the classic editor bridge",
@@ -192,10 +205,12 @@ try {
 		JSON.stringify(a.scripts["wp-blocks"]?.extra["after"]).includes("registerBlockBindingsSource"),
 	);
 	t.check(
-		"the command palette handles are retired",
-		a.scripts["wp-commands"] === null && a.scripts["wp-core-commands"] === null,
+		"the command palette handles are served from the vendored build (wp-edit-post needs them)",
+		(a.scripts["wp-commands"]?.src.includes(`${pluginUrl}build/commands/`) ?? false) &&
+			(a.scripts["wp-core-commands"]?.src.includes(`${pluginUrl}build/core-commands/`) ?? false),
+		String(a.scripts["wp-commands"]?.src),
 	);
-	t.check("the command palette is unhooked", !a.commandPaletteHooked);
+	t.check("the admin-wide command palette is unhooked", !a.commandPaletteHooked);
 	t.check("other 7.x-only handles stay registered", a.scripts["wp-private-apis"] !== null);
 	t.check(
 		"wp-edit-post style is served from the vendored build",
@@ -203,7 +218,7 @@ try {
 		a.styles["wp-edit-post"]?.src,
 	);
 	t.check(
-		"wp-edit-post style has the 11.9 dependency graph",
+		"wp-edit-post style has the 18.5 dependency graph",
 		JSON.stringify(a.styles["wp-edit-post"]?.deps) ===
 			JSON.stringify([
 				"wp-components",
@@ -211,7 +226,8 @@ try {
 				"wp-editor",
 				"wp-edit-blocks",
 				"wp-block-library",
-				"wp-nux",
+				"wp-commands",
+				"wp-preferences",
 			]),
 		JSON.stringify(a.styles["wp-edit-post"]?.deps),
 	);
@@ -233,94 +249,95 @@ try {
 		a.styles["wp-base-styles"]?.src.includes("/wp-includes/"),
 		a.styles["wp-base-styles"]?.src,
 	);
-	t.check("core's bundled patterns are disabled", !a.corePatterns);
+	t.check(
+		"core's query patterns stay, the 7.x navigation overlays go",
+		a.patterns.includes("core/query-standard-posts") &&
+			!a.patterns.some((n) => n.startsWith("core/navigation-overlay")),
+		a.patterns.filter((n) => n.startsWith("core/")).join(","),
+	);
 
 	t.check(
-		"core/paragraph is the 11.9 static definition (apiVersion 2, no callback)",
-		a.blocks["core/paragraph"]?.apiVersion === 2 && a.blocks["core/paragraph"]?.render === null,
+		"core/paragraph is the 18.5 static definition (no callback)",
+		a.blocks["core/paragraph"]?.apiVersion === 3 &&
+			a.blocks["core/paragraph"]?.render === null &&
+			is185(a.blocks["core/paragraph"]),
 		JSON.stringify(a.blocks["core/paragraph"]),
+	);
+	t.check(
+		"core/image is the 18.5 definition (no 7.x blob/isDecorative attributes)",
+		!("isDecorative" in (a.blocks["core/image"]?.attributes ?? {})),
+		Object.keys(a.blocks["core/image"]?.attributes ?? {}).join(","),
 	);
 	const citation = a.blocks["core/quote"]?.attributes["citation"] as
 		| { source?: string }
 		| undefined;
 	t.check(
-		"core/quote citation is html-sourced (11.9 parser can read it)",
-		citation?.source === "html",
+		"core/quote citation is rich-text-sourced (the 18.5 shape)",
+		citation?.source === "rich-text",
 		JSON.stringify(citation),
 	);
 	t.check(
-		"core/list has the 11.9 values attribute",
-		"values" in (a.blocks["core/list"]?.attributes ?? {}),
-	);
-	t.check(
-		"core/archives renders with the 11.9 callback",
+		"core/archives renders with the 18.5 callback",
 		a.blocks["core/archives"]?.render === "gutenberg_render_block_core_archives",
 		String(a.blocks["core/archives"]?.render),
 	);
 	t.check(
-		"core/site-logo keeps core's renderer on 11.9 metadata",
+		"core/site-logo keeps core's renderer on 18.5 metadata",
 		a.blocks["core/site-logo"]?.render === "render_block_core_site_logo" &&
-			a.blocks["core/site-logo"]?.apiVersion === 2,
+			a.blocks["core/site-logo"]?.apiVersion === 3,
 		JSON.stringify(a.blocks["core/site-logo"]),
 	);
 	t.check(
-		"core/legacy-widget keeps core's renderer",
-		a.blocks["core/legacy-widget"]?.render === "render_block_core_legacy_widget",
+		"core/navigation-link keeps core's renderer (variations would double)",
+		a.blocks["core/navigation-link"]?.render === "render_block_core_navigation_link",
+		String(a.blocks["core/navigation-link"]?.render),
+	);
+	t.check(
+		"core/legacy-widget renders with the 18.5 callback",
+		a.blocks["core/legacy-widget"]?.render === "gutenberg_render_block_core_legacy_widget",
 		String(a.blocks["core/legacy-widget"]?.render),
 	);
 	t.check(
-		"core/post-comments is left to core (skip)",
-		a.blocks["core/post-comments"] !== null &&
-			!String(a.blocks["core/post-comments"]?.render).startsWith("gutenberg_"),
+		"core/post-comments is the legacy alias 18.5's comments.php registers",
+		a.blocks["core/post-comments"]?.render === "gutenberg_render_block_core_comments",
 		String(a.blocks["core/post-comments"]?.render),
 	);
-	t.check("7.x-only blocks stay registered server-side", a.blocks["core/list-item"] !== null);
+	t.check("core/list-item is the 18.5 definition", a.blocks["core/list-item"] !== null);
 	t.check(
-		"the server bootstrap sends apiVersion 2 to the client",
-		a.serverSettings["core/paragraph"]?.apiVersion === 2 &&
-			a.serverSettings["core/image"]?.apiVersion === 2,
+		"experimental 18.5 blocks are left to core (skip)",
+		a.blocks["core/post-time-to-read"] !== null &&
+			!String(a.blocks["core/post-time-to-read"]?.render).startsWith("gutenberg_"),
+		String(a.blocks["core/post-time-to-read"]?.render),
+	);
+	t.check("7.x-only blocks stay registered server-side", a.blocks["core/accordion"] !== null);
+	t.check(
+		"the server bootstrap sends the 18.5 definitions to the client",
+		a.serverSettings["core/paragraph"]?.apiVersion === 3 &&
+			is185(a.serverSettings["core/paragraph"] as { attributes: Record<string, unknown> }) &&
+			!("isDecorative" in (a.serverSettings["core/image"]?.attributes ?? {})),
+		JSON.stringify(a.serverSettings["core/paragraph"]),
 	);
 
 	const es = a.editorSettings as {
-		fse: boolean;
-		templateMode: boolean;
+		keys: string[];
 		paletteOrigins: string[];
-		fontSizeOrigins: string[];
-		patterns: string[];
-		patternCategories: boolean;
-		defaultEditorStyles: number;
-		editorAssets: boolean;
+		resolvedAssets: boolean;
 	};
-	t.check("FSE-only blocks are off for a classic theme", es.fse === false);
-	t.check("template mode is off", es.templateMode === false);
 	t.check(
-		"palette origins are the 11.9 names",
-		es.paletteOrigins.includes("core") && !es.paletteOrigins.includes("default"),
+		"palette origins keep core's names (18.5 reads default/theme/custom)",
+		es.paletteOrigins.includes("default") && !es.paletteOrigins.includes("core"),
 		es.paletteOrigins.join(","),
 	);
+	t.check("__unstableResolvedAssets is present for the 18.5 iframe", es.resolvedAssets);
 	t.check(
-		"font size origins are the 11.9 names",
-		es.fontSizeOrigins.includes("core") && !es.fontSizeOrigins.includes("default"),
-		es.fontSizeOrigins.join(","),
-	);
-	t.check(
-		"block patterns are inlined again and contain no core patterns",
-		Array.isArray(es.patterns) && es.patterns.every((n) => !n.startsWith("core/")),
-		es.patterns.slice(0, 5).join(","),
-	);
-	t.check("block pattern categories are inlined", es.patternCategories);
-	t.check(
-		"defaultEditorStyles comes from the 11.9 stylesheet",
-		es.defaultEditorStyles > 100,
-		String(es.defaultEditorStyles),
-	);
-	t.check("window.__editorAssets is exposed for the 11.9 iframe", es.editorAssets);
-	t.check(
-		"the __experimental menu routes are aliased",
-		["/__experimental/menus", "/__experimental/menu-items", "/__experimental/menu-locations"].every(
-			(r) => a.routes.includes(r),
-		),
-		a.routes.join(","),
+		"the settings 18.5's editor reads are all present",
+		[
+			"__experimentalFeatures",
+			"styles",
+			"__unstableResolvedAssets",
+			"__experimentalDashboardLink",
+		].every((k) => es.keys.includes(k)),
+		es.keys.filter((k) => k.startsWith("__")).join(","),
 	);
 	t.check(
 		"the editor screen bootstrap raises no PHP notices",
@@ -329,13 +346,13 @@ try {
 	);
 
 	// ---- the front end is untouched ----------------------------------------
-	const front = await phpJson<{ editPost: string; paragraphApi: number | null; commands: boolean }>(
+	const front = await phpJson<{ editPost: string; paragraph185: boolean; commands: boolean }>(
 		server,
 		`$scripts = wp_scripts();
 		$b = WP_Block_Type_Registry::get_instance()->get_registered('core/paragraph');
 		return [
 			'editPost' => (string) ($scripts->registered['wp-edit-post']->src ?? ''),
-			'paragraphApi' => $b?->api_version,
+			'paragraph185' => isset($b->attributes['content']['__experimentalRole']),
 			'commands' => isset($scripts->registered['wp-commands']),
 		];`,
 	);
@@ -345,33 +362,28 @@ try {
 		front.value.editPost,
 	);
 	t.check(
-		"front end: core/paragraph is core's (apiVersion 3)",
-		front.value.paragraphApi === 3,
-		String(front.value.paragraphApi),
+		"front end: core/paragraph is core's",
+		!front.value.paragraph185 && !front.value.editPost.includes(pluginUrl),
 	);
 	t.check("front end: the command palette handle exists", front.value.commands);
 
 	// ---- REST requests get the editor's registry ---------------------------
-	const rest = await phpJson<{ editPost: string; paragraphApi: number | null }>(
+	const rest = await phpJson<{ editPost: string; paragraph185: boolean }>(
 		server,
 		`$scripts = wp_scripts();
 		$b = WP_Block_Type_Registry::get_instance()->get_registered('core/paragraph');
-		return ['editPost' => (string) ($scripts->registered['wp-edit-post']->src ?? ''), 'paragraphApi' => $b?->api_version];`,
+		return ['editPost' => (string) ($scripts->registered['wp-edit-post']->src ?? ''), 'paragraph185' => isset($b->attributes['content']['__experimentalRole'])];`,
 		{ constants: { REST_REQUEST: true } },
 	);
-	t.check(
-		"REST: core/paragraph is the 11.9 definition",
-		rest.value.paragraphApi === 2,
-		String(rest.value.paragraphApi),
-	);
+	t.check("REST: core/paragraph is the 18.5 definition", rest.value.paragraph185);
 	t.check("REST: wp-edit-post is the vendored build", rest.value.editPost.includes(pluginUrl));
 
 	// ---- bypassed screens keep core's stack --------------------------------
-	const bypass = await phpJson<{ editPost: string; paragraphApi: number | null }>(
+	const bypass = await phpJson<{ editPost: string; paragraph185: boolean }>(
 		server,
 		`$scripts = wp_scripts();
 		$b = WP_Block_Type_Registry::get_instance()->get_registered('core/paragraph');
-		return ['editPost' => (string) ($scripts->registered['wp-edit-post']->src ?? ''), 'paragraphApi' => $b?->api_version];`,
+		return ['editPost' => (string) ($scripts->registered['wp-edit-post']->src ?? ''), 'paragraph185' => isset($b->attributes['content']['__experimentalRole'])];`,
 		{ adminPage: "site-editor.php" },
 	);
 	t.check(
@@ -379,9 +391,12 @@ try {
 		bypass.value.editPost.includes("/wp-includes/js/dist/"),
 		bypass.value.editPost,
 	);
-	t.check("site-editor.php: core/paragraph is core's", bypass.value.paragraphApi === 3);
+	t.check(
+		"site-editor.php: core/paragraph is core's",
+		!bypass.value.paragraph185 && !bypass.value.editPost.includes(pluginUrl),
+	);
 
-	// ---- every block the 11.9 PHP serves renders on current core -----------
+	// ---- every block the 18.5 PHP serves renders on current core -----------
 	const render = await phpJson<
 		Record<string, { html: number; error: string | null; notices: string[] }>
 	>(
@@ -412,8 +427,8 @@ try {
 	);
 	const rendered = Object.entries(render.value);
 	t.check(
-		"rendered every 11.9-served dynamic block",
-		rendered.length >= 50,
+		"rendered every 18.5-served dynamic block",
+		rendered.length >= 65,
 		`${rendered.length} blocks`,
 	);
 	for (const [name, r] of rendered) {

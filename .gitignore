@@ -4,7 +4,7 @@ node_modules
 result*
 gutenberg-downgrade.zip
 
-# The Gutenberg 11.9.1 build is fetched by Nix (nix/gutenberg-release.nix) and
+# The Gutenberg 18.5.0 build is fetched by Nix (nix/gutenberg-release.nix) and
 # copied here by `nix run .#sync-assets` / the devShell hook. Never commit it.
 assets/gutenberg
 

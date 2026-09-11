@@ -3,12 +3,12 @@
 #   build/            every package bundle (index.min.js + index.min.asset.php,
 #                     unminified index.js for SCRIPT_DEBUG, stylesheets, per-block
 #                     block.json + CSS + view scripts, the dynamic-block PHP)
-#   vendor/           React 17.0.1 UMD builds, renamed from their hashed names
+#   vendor/           React 18.3.1 UMD builds and the JSX runtime
 #   manifest.php      generated inventory read by GutenbergDowngrade\Manifest
 #   SOURCE.txt        provenance
 #
-# The release's lib/ (the 11.9 plugin's own PHP: FSE, global styles, REST
-# shims, experiments) is exactly what clashes with modern core, so it is not
+# The release's lib/ (the 18.5 plugin's own PHP: the 6.6 compat layer, global
+# styles, experiments) is exactly what clashes with modern core, so it is not
 # copied. The plugin's src/ reimplements the parts that still matter.
 {
   runCommand,
@@ -25,28 +25,23 @@ runCommand "gutenberg-downgrade-assets-${gutenbergRelease.version}"
   ''
     set -euo pipefail
 
-    mkdir -p "$out/vendor"
+    mkdir -p "$out"
     cp -r ${gutenbergRelease}/build "$out/build"
     chmod -R u+w "$out/build"
 
-    # gutenberg_register_vendor_script() cached the unpkg UMD files under
-    # vendor/<handle>[.min].<md5-prefix>.js; stable names keep the manifest simple.
-    pick() {
-      local pattern="$1" target="$2"
-      local matches
-      matches=$(ls ${gutenbergRelease}/vendor/ | grep -E "$pattern" || true)
-      [ "$(echo "$matches" | grep -c .)" -eq 1 ] \
-        || { echo "expected exactly one vendor file matching $pattern, got: $matches" >&2; exit 1; }
-      cp "${gutenbergRelease}/vendor/$matches" "$out/vendor/$target"
-    }
-    pick '^react\.min\.[0-9a-f]+\.js$'     react.min.js
-    pick '^react\.[0-9a-f]+\.js$'          react.js
-    pick '^react-dom\.min\.[0-9a-f]+\.js$' react-dom.min.js
-    pick '^react-dom\.[0-9a-f]+\.js$'      react-dom.js
+    # Development-only and script-module plumbing the plugin never serves:
+    # react-refresh (hot reload), the import-map polyfill, and the source maps
+    # (19 MB the browser only fetches with DevTools open).
+    rm -rf "$out/build/react-refresh-entry" "$out/build/react-refresh-runtime" "$out/build/modules"
+    find "$out/build" -name '*.map' -delete
+
+    # gutenberg_register_vendor_scripts() serves React from build/vendors/;
+    # keep it apart from the package bundles under the name the manifest uses.
+    mv "$out/build/vendors" "$out/vendor"
 
     for f in react.min.js react-dom.min.js; do
-      grep -q 'React v17\.0\.1' "$out/vendor/$f" \
-        || { echo "$f is not React 17.0.1" >&2; exit 1; }
+      grep -q '18\.3\.1' "$out/vendor/$f" \
+        || { echo "$f is not React 18.3.1" >&2; exit 1; }
     done
 
     php ${pluginSrc}/bin/generate-manifest.php \
@@ -61,7 +56,8 @@ runCommand "gutenberg-downgrade-assets-${gutenbergRelease.version}"
     Source: https://github.com/WordPress/gutenberg/tree/v$version
     License: GPL-2.0-or-later (see the plugin's LICENSE)
 
-    Only build/ and the React 17.0.1 vendor files are included; see
-    nix/gutenberg-assets.nix in https://github.com/Avunu/gutenberg-downgrade.
+    Only build/ (minus source maps and development-only bundles) and the React
+    18.3.1 vendor files are included; see nix/gutenberg-assets.nix in
+    https://github.com/Avunu/gutenberg-downgrade.
     EOF
   ''

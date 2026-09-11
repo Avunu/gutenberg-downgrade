@@ -50,8 +50,8 @@ parameters:
             message: '#WP_Block_Type_Registry::register\(\) expects array.*stdClass given#'
             path: tests/Unit/BlockRegistryTest.php
         -
-            message: '#WP_Block_Pattern(s|_Categories)_Registry::\$items#'
-            path: tests/Unit/EditorSettingsTest.php
+            message: '#WP_Block_Patterns_Registry::\$items#'
+            path: tests/Unit/CoreNeutralizerTest.php
         # PucFactory::buildUpdateChecker() is typed as a broad union; narrowing it
         # would require referencing the version-suffixed (v5pX) class names, which
         # break on every plugin-update-checker minor release.

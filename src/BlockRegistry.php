@@ -7,18 +7,18 @@ namespace GutenbergDowngrade;
 use WP_Block_Type_Registry;
 
 /**
- * Replaces core's server-side core-block definitions with the 11.9 ones.
+ * Replaces core's server-side core-block definitions with the 18.5 ones.
  *
- * This is what makes the editor consistent: the 11.9 client lets the
+ * This is what makes the editor consistent: the 18.5 client lets the
  * server-bootstrapped block definitions win over its bundled block.json, and
- * core's now carry apiVersion 3 and `rich-text`-sourced attributes the 11.9
- * parser cannot read. Port of 11.9's gutenberg_reregister_core_block_types().
+ * core's have since gained attributes, supports and selectors the 18.5
+ * client does not know. Port of 18.5's gutenberg_reregister_core_block_types().
  */
 final class BlockRegistry
 {
     /**
      * After core's registrations at init@10 (register_core_block_types_from_metadata
-     * and every register_block_core_*), before the 11.9 files register at init@20.
+     * and every register_block_core_*), before the 18.5 files register at init@20.
      */
     public const INIT_PRIORITY = 15;
 
@@ -45,8 +45,8 @@ final class BlockRegistry
 
     /**
      * Drops core's version of every block we take over and registers the
-     * static ones from the 11.9 block.json. Dynamic blocks are registered a
-     * moment later, at init@20, by the 11.9 files loaded in register().
+     * static ones from the 18.5 block.json. Dynamic blocks are registered a
+     * moment later, at init@20, by the 18.5 files loaded in register().
      */
     public static function reregister(): void
     {
@@ -81,17 +81,17 @@ final class BlockRegistry
                     break;
 
                 case BlockConfig::MODE_DYNAMIC:
-                    // The 11.9 PHP registers it at init@20.
+                    // The 18.5 PHP registers it at init@20.
                     break;
             }
         }
     }
 
     /**
-     * The 11.9 client refuses to register a block whose server definition has
-     * no title ("The block … must have a title"). Core registers legacy
-     * aliases such as core/post-comments that way; give the blocks we skip the
-     * title from their 11.9 block.json so the client can still register them.
+     * The client refuses to register a block whose server definition has no
+     * title ("The block … must have a title"). Core registers legacy aliases
+     * that way; give the blocks we skip the title from their 18.5 block.json so
+     * the client can still register them.
      */
     public static function backfillTitles(): void
     {
@@ -137,7 +137,7 @@ final class BlockRegistry
     }
 
     /**
-     * The 11.9 dynamic-block files hook their own registration on init@20 and
+     * The 18.5 dynamic-block files hook their own registration on init@20 and
      * the render callbacks they declare are already `gutenberg_`-prefixed, so
      * they can be loaded next to core's copies.
      */
@@ -156,7 +156,7 @@ final class BlockRegistry
     }
 
     /**
-     * Global helpers the shipped block files still expect from 11.9's lib/.
+     * Global helpers the shipped block files still expect from 18.5's lib/.
      */
     private static function defineShims(): void
     {

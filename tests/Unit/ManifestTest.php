@@ -23,7 +23,7 @@ final class ManifestTest extends UnitTestCase
     private static function valid(): array
     {
         return [
-            'gutenbergVersion' => '11.9.1',
+            'gutenbergVersion' => '18.5.0',
             'packages'         => [
                 'wp-a11y' => [
                     'js'      => 'build/a11y/index.min.js',
@@ -37,8 +37,9 @@ final class ManifestTest extends UnitTestCase
                 'core/paragraph' => ['dir' => 'build/block-library/blocks/paragraph', 'php' => null],
             ],
             'vendor'           => [
-                'react'     => ['prod' => 'vendor/react.min.js', 'dev' => 'vendor/react.js'],
-                'react-dom' => ['prod' => 'vendor/react-dom.min.js', 'dev' => 'vendor/react-dom.js'],
+                'react'             => ['prod' => 'vendor/react.min.js', 'dev' => 'vendor/react.js'],
+                'react-dom'         => ['prod' => 'vendor/react-dom.min.js', 'dev' => 'vendor/react-dom.js'],
+                'react-jsx-runtime' => ['prod' => 'vendor/react-jsx-runtime.min.js', 'dev' => 'vendor/react-jsx-runtime.js'],
             ],
         ];
     }
@@ -47,10 +48,11 @@ final class ManifestTest extends UnitTestCase
     {
         $manifest = Manifest::fromArray(self::valid());
 
-        self::assertSame('11.9.1', $manifest->gutenbergVersion());
+        self::assertSame('18.5.0', $manifest->gutenbergVersion());
         self::assertSame(['wp-dom-ready', 'wp-i18n', 'wp-polyfill'], $manifest->packages()['wp-a11y']['deps']);
         self::assertNull($manifest->blocks()['core/paragraph']['php']);
         self::assertSame('vendor/react-dom.js', $manifest->vendor('react-dom')['dev']);
+        self::assertSame('vendor/react-jsx-runtime.min.js', $manifest->vendor('react-jsx-runtime')['prod']);
         self::assertSame(self::valid(), $manifest->toArray());
     }
 
@@ -107,6 +109,6 @@ final class ManifestTest extends UnitTestCase
         self::assertSame($regenerated, $shipped->toArray());
         self::assertArrayHasKey('wp-edit-post', $shipped->packages());
         self::assertArrayHasKey('core/paragraph', $shipped->blocks());
-        self::assertSame('11.9.1', $shipped->gutenbergVersion());
+        self::assertSame('18.5.0', $shipped->gutenbergVersion());
     }
 }

@@ -45,7 +45,7 @@ foreach ($manifest->blocks() as $name => $block) {
         $exists($block['php']);
     }
 }
-foreach (['react', 'react-dom'] as $lib) {
+foreach (Manifest::VENDOR_LIBRARIES as $lib) {
     $exists($manifest->vendor($lib)['prod']);
     $exists($manifest->vendor($lib)['dev']);
 }

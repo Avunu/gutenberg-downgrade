@@ -16,7 +16,7 @@ final class Admin
             'error',
             __(
                 'Gutenberg Downgrade is inactive because the Gutenberg plugin is active. '
-                . 'Deactivate Gutenberg to load the 11.9 editor.',
+                . 'Deactivate Gutenberg to load the 18.5 editor.',
                 'gutenberg-downgrade'
             )
         );
@@ -35,8 +35,8 @@ final class Admin
     }
 
     /**
-     * Shown on the Plugins screen only: block themes (Site Editor, template
-     * mode) are outside what the 11.9 editor supports on current core.
+     * Shown on the Plugins screen only: the Site Editor keeps core's stack
+     * (a bypassed screen), so block themes get a mixed experience.
      */
     public static function blockThemeNotice(): void
     {
@@ -48,8 +48,8 @@ final class Admin
         self::notice(
             'warning',
             __(
-                'Gutenberg Downgrade: the active theme is a block theme. The Site Editor and template editing '
-                . 'are not supported by the 11.9 editor; use a classic theme for the intended experience.',
+                'Gutenberg Downgrade: the active theme is a block theme. The Site Editor keeps the current '
+                . 'WordPress editor; only the post, widgets and customizer screens get the 18.5 editor.',
                 'gutenberg-downgrade'
             )
         );

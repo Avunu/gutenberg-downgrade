@@ -22,17 +22,20 @@ final class ScriptOverridesTest extends UnitTestCase
     private function manifest(): Manifest
     {
         return Manifest::fromArray([
-            'gutenbergVersion' => '11.9.1',
+            'gutenbergVersion' => '18.5.0',
             'packages'         => [
-                'wp-blocks'          => ['js' => 'build/blocks/index.min.js', 'jsDebug' => 'build/blocks/index.js', 'deps' => ['wp-hooks', 'wp-polyfill'], 'version' => 'v-blocks'],
-                'wp-edit-post'       => ['js' => 'build/edit-post/index.min.js', 'jsDebug' => null, 'deps' => ['wp-blocks', 'wp-polyfill'], 'version' => 'v-edit-post'],
-                'wp-i18n'            => ['js' => 'build/i18n/index.min.js', 'jsDebug' => null, 'deps' => ['wp-hooks', 'wp-polyfill'], 'version' => 'v-i18n'],
-                'wp-edit-navigation' => ['js' => 'build/edit-navigation/index.min.js', 'jsDebug' => null, 'deps' => [], 'version' => 'v-nav'],
+                'wp-blocks'        => ['js' => 'build/blocks/index.min.js', 'jsDebug' => 'build/blocks/index.js', 'deps' => ['wp-hooks', 'wp-polyfill'], 'version' => 'v-blocks'],
+                'wp-edit-post'     => ['js' => 'build/edit-post/index.min.js', 'jsDebug' => null, 'deps' => ['wp-blocks', 'wp-commands', 'wp-polyfill'], 'version' => 'v-edit-post'],
+                'wp-i18n'          => ['js' => 'build/i18n/index.min.js', 'jsDebug' => null, 'deps' => ['wp-hooks', 'wp-polyfill'], 'version' => 'v-i18n'],
+                'wp-commands'      => ['js' => 'build/commands/index.min.js', 'jsDebug' => null, 'deps' => ['wp-polyfill'], 'version' => 'v-commands'],
+                'wp-preferences'   => ['js' => 'build/preferences/index.min.js', 'jsDebug' => null, 'deps' => ['wp-polyfill'], 'version' => 'v-prefs'],
+                'wp-interactivity' => ['js' => 'build/interactivity/index.min.js', 'jsDebug' => null, 'deps' => [], 'version' => 'v-ia'],
             ],
             'blocks'           => ['core/paragraph' => ['dir' => 'build/block-library/blocks/paragraph', 'php' => null]],
             'vendor'           => [
-                'react'     => ['prod' => 'vendor/react.min.js', 'dev' => 'vendor/react.js'],
-                'react-dom' => ['prod' => 'vendor/react-dom.min.js', 'dev' => 'vendor/react-dom.js'],
+                'react'             => ['prod' => 'vendor/react.min.js', 'dev' => 'vendor/react.js'],
+                'react-dom'         => ['prod' => 'vendor/react-dom.min.js', 'dev' => 'vendor/react-dom.js'],
+                'react-jsx-runtime' => ['prod' => 'vendor/react-jsx-runtime.min.js', 'dev' => 'vendor/react-jsx-runtime.js'],
             ],
         ]);
     }
@@ -42,6 +45,7 @@ final class ScriptOverridesTest extends UnitTestCase
         $scripts = new WP_Scripts();
         $scripts->add('react', '/wp-includes/js/dist/vendor/react.min.js', [], '18.3.1.1', 1);
         $scripts->add('react-dom', '/wp-includes/js/dist/vendor/react-dom.min.js', ['react'], '18.3.1.1', 1);
+        $scripts->add('react-jsx-runtime', '/wp-includes/js/dist/vendor/react-jsx-runtime.min.js', ['react'], '18.3.1.1', 1);
         $scripts->add('wp-hooks', '/wp-includes/js/dist/hooks.min.js', [], 'core', 1);
         $scripts->add('wp-i18n', '/wp-includes/js/dist/i18n.min.js', ['wp-hooks'], 'core', 1);
         $scripts->add('wp-blocks', '/wp-includes/js/dist/blocks.min.js', ['react-jsx-runtime', 'wp-private-apis'], 'core', 1);
@@ -51,6 +55,7 @@ final class ScriptOverridesTest extends UnitTestCase
         $scripts->add('wp-commands', '/wp-includes/js/dist/commands.min.js', [], 'core', 1);
         $scripts->add('wp-core-commands', '/wp-includes/js/dist/core-commands.min.js', ['wp-commands'], 'core', 1);
         $scripts->add('wp-private-apis', '/wp-includes/js/dist/private-apis.min.js', [], 'core', 1);
+        $scripts->add('wp-preferences', '/wp-includes/js/dist/preferences.min.js', ['wp-preferences-persistence'], 'core', 1);
         $scripts->add('wp-base-styles', '/wp-includes/js/dist/base-styles.min.js', [], 'core', 1);
 
         return $scripts;
@@ -68,9 +73,9 @@ final class ScriptOverridesTest extends UnitTestCase
         self::assertSame('v-edit-post', $editPost->ver);
         self::assertSame(1, $editPost->args);
         self::assertSame(1, $editPost->extra['group']);
-        self::assertArrayNotHasKey('module_dependencies', $editPost->extra, '7.x import-map data must not leak into the 11.9 bundle');
+        self::assertArrayNotHasKey('module_dependencies', $editPost->extra, '7.x import-map data must not leak into the 18.5 bundle');
         self::assertSame(
-            ['wp-blocks', 'wp-polyfill', 'media-models', 'media-views', 'postbox', 'wp-dom-ready', 'wp-i18n'],
+            ['wp-blocks', 'wp-commands', 'wp-polyfill', 'media-models', 'media-views', 'postbox', 'wp-dom-ready', 'wp-i18n'],
             $editPost->deps,
             'asset.php deps + the manual extras core cannot detect + wp-i18n from set_translations'
         );
@@ -81,9 +86,16 @@ final class ScriptOverridesTest extends UnitTestCase
         self::assertSame(ScriptOverrides::REACT_VERSION, $react->ver);
         self::assertSame(['wp-polyfill'], $react->deps);
         self::assertSame(['react'], $scripts->registered['react-dom']->deps);
+        self::assertSame(self::BASE . 'vendor/react-jsx-runtime.min.js', $scripts->registered['react-jsx-runtime']->src);
+        self::assertSame(['react'], $scripts->registered['react-jsx-runtime']->deps);
+        self::assertSame(
+            ['wp-polyfill', 'wp-preferences-persistence', 'wp-i18n'],
+            $scripts->registered['wp-preferences']->deps,
+            'the persistence dependency core and 18.5 both hard-code'
+        );
     }
 
-    public function testKeepsCoreInlineScriptsAndDropsRetiredHandles(): void
+    public function testKeepsCoreInlineScriptsAndOnlyRepointsWhatCoreRegistered(): void
     {
         $scripts = $this->coreScripts();
         ScriptOverrides::register($this->manifest(), BlockConfig::load());
@@ -93,11 +105,11 @@ final class ScriptOverridesTest extends UnitTestCase
         $after = $scripts->registered['wp-blocks']->extra['after'];
         self::assertSame('wp.blocks.setCategories([]);', $after[0], 'core inline scripts survive the in-place override');
         self::assertStringContainsString('registerBlockBindingsSource', $after[1], 'the compat shim is appended');
-        self::assertArrayNotHasKey('wp-commands', $scripts->registered);
-        self::assertArrayNotHasKey('wp-core-commands', $scripts->registered);
+        self::assertSame(self::BASE . 'build/commands/index.min.js', $scripts->registered['wp-commands']->src, 'wp-edit-post depends on it');
+        self::assertSame('/wp-includes/js/dist/core-commands.min.js', $scripts->registered['wp-core-commands']->src, 'not in this manifest: untouched');
         self::assertArrayHasKey('wp-private-apis', $scripts->registered, 'other 7.x-only handles stay registered');
         self::assertArrayHasKey('wp-base-styles', $scripts->registered);
-        self::assertArrayNotHasKey('wp-edit-navigation', $scripts->registered, 'handles core never registered are not added');
+        self::assertArrayNotHasKey('wp-interactivity', $scripts->registered, 'handles core never registered as scripts are not added');
         self::assertSame(['wp-hooks', 'wp-polyfill'], $scripts->registered['wp-i18n']->deps, 'wp-i18n gets no set_translations() (core #46089)');
         self::assertSame(['wp-hooks', 'wp-polyfill', 'wp-i18n'], $scripts->registered['wp-blocks']->deps);
     }
@@ -108,13 +120,12 @@ final class ScriptOverridesTest extends UnitTestCase
         ScriptOverrides::register($this->manifest(), BlockConfig::load());
 
         ScriptOverrides::apply($scripts);
-        // Core re-adds the handle on the init@0 re-fire; our callback runs after it again.
-        $scripts->add('wp-commands', '/wp-includes/js/dist/commands.min.js', [], 'core', 1);
+        // WP_Scripts fires wp_default_scripts again at init@0; our callback runs after it again.
         ScriptOverrides::apply($scripts);
 
         self::assertCount(2, $scripts->registered['wp-blocks']->extra['after'], 'the shim is attached exactly once');
-        self::assertArrayNotHasKey('wp-commands', $scripts->registered);
         self::assertCount(1, array_keys($scripts->registered['wp-edit-post']->deps, 'wp-i18n', true));
+        self::assertCount(1, array_keys($scripts->registered['wp-edit-post']->deps, 'postbox', true));
     }
 
     #[RunInSeparateProcess]
@@ -137,9 +148,17 @@ final class ScriptOverridesTest extends UnitTestCase
         Functions\when('wp_json_encode')->alias(static fn(mixed $v, int $flags = 0): string => (string) json_encode($v, $flags));
         Functions\expect('wp_add_inline_script')
             ->once()
-            ->with('wp-blocks', 'window.gutenbergDowngradeHiddenBlocks = ["core/navigation-area"];', 'before');
+            ->with('wp-blocks', 'window.gutenbergDowngradeHiddenBlocks = ["core/table-of-contents"];', 'before');
 
         ScriptOverrides::register($this->manifest(), BlockConfig::load());
+        ScriptOverrides::exposeHiddenBlocks();
+    }
+
+    public function testExposesNothingWhenNoBlockIsHidden(): void
+    {
+        Functions\expect('wp_add_inline_script')->never();
+
+        ScriptOverrides::register($this->manifest(), BlockConfig::fromArray(['blocks' => []]));
         ScriptOverrides::exposeHiddenBlocks();
     }
 
