@@ -1,8 +1,8 @@
 {
   "name": "avunu/gutenberg-downgrade",
-  "description": "Load the Gutenberg 11.9.1 (WordPress 5.9 series) block editor on current WordPress releases, for sites whose page builder clashes with the modern editor. Configure via wp-config.php \u2014 no admin settings.",
+  "description": "Load the Gutenberg 11.9.1 (WordPress 5.9 series) block editor on current WordPress releases, for sites whose page builder clashes with the modern editor. Configure via wp-config.php — no admin settings.",
   "type": "wordpress-plugin",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "license": "GPL-2.0-or-later",
   "authors": [
     {
