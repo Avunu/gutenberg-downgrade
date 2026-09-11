@@ -1,0 +1,30 @@
+# Static audit of the vendored Gutenberg 11.9 block PHP against current core.
+#
+# Level 0 on purpose: the question is "does this 2021 code call anything that
+# no longer exists?" (undefined functions/classes/methods, wrong arity), not
+# whether it would pass the plugin's own level-8 bar. tests/audit/check-blocks.php
+# reconciles the findings with config/blocks.php.
+#
+#   composer audit:blocks      (working tree; needs vendor/ and assets/gutenberg/)
+#   nix build .#checks.x86_64-linux.block-audit -L
+parameters:
+    level: 0
+    phpVersion: 80400
+    paths:
+        - ../../assets/gutenberg/build/block-library/blocks
+        - ../../assets/gutenberg/build/widgets/blocks
+    scanFiles:
+        - ../../vendor/php-stubs/wordpress-stubs/wordpress-stubs.php
+    # The lib/ helpers this plugin re-provides for the block files.
+    bootstrapFiles:
+        - ../../src/shims.php
+    tmpDir: .phpstan-cache
+    reportUnmatchedIgnoredErrors: false
+    ignoreErrors:
+        # calendar.php calls get_calendar( true, false ) — the pre-6.8 signature.
+        # Core still honours it through func_get_args() and returns the
+        # string, but the stubs' conditional return type only sees the array
+        # form. Verified against wp-includes/general-template.php (7.1).
+        -
+            message: '#Result of function get_calendar \(void\) is used#'
+            path: ../../assets/gutenberg/build/block-library/blocks/calendar.php

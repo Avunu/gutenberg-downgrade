@@ -1,0 +1,57 @@
+includes:
+    # Bootstraps php-stubs/wordpress-stubs and adds WordPress-aware rules
+    # (hook callback signatures, dynamic return types, WP constants).
+    - vendor/szepeviktor/phpstan-wordpress/extension.neon
+
+parameters:
+    level: 8
+    phpVersion: 80400
+    paths:
+        - gutenberg-downgrade.php
+        - src/
+        - config/
+        - bin/
+        - tests/Unit/
+        - tests/Support/
+        - tests/audit/check-blocks.php
+    excludePaths:
+        # Global-namespace stand-ins for core classes; they would duplicate the stubs.
+        - tests/Support/wp-doubles.php
+    bootstrapFiles:
+        - phpstan-bootstrap.php
+        # The test toolchain (PHPUnit, Brain Monkey) is a separate Composer
+        # project; its autoloader lets the test classes resolve.
+        - tests/tools/vendor/autoload.php
+    # PHPDoc types on WordPress boundaries (registry objects, filter payloads)
+    # are not runtime-enforced; keep defensive checks without false positives.
+    treatPhpDocTypesAsCertain: false
+    dynamicConstantNames:
+        - GUTENBERG_DOWNGRADE_DISABLE
+        - GUTENBERG_DOWNGRADE_BYPASS_PAGES
+        - GUTENBERG_VERSION
+        - SCRIPT_DEBUG
+        - REST_REQUEST
+        - WP_ADMIN
+        - WP_DEBUG
+    ignoreErrors:
+        # tests/Support/wp-doubles.php gives the core class stand-ins a few
+        # inspection members (reset(), $unregistered, $items) that the real
+        # classes in the stubs do not have.
+        -
+            message: '#WP_Block_Type_Registry::reset\(\)#'
+            path: tests/Support/UnitTestCase.php
+        -
+            message: '#WP_Block_Type_Registry::\$unregistered#'
+            path: tests/Unit/BlockRegistryTest.php
+        -
+            message: '#WP_Block_Type_Registry::register\(\) expects array.*stdClass given#'
+            path: tests/Unit/BlockRegistryTest.php
+        -
+            message: '#WP_Block_Pattern(s|_Categories)_Registry::\$items#'
+            path: tests/Unit/EditorSettingsTest.php
+        # PucFactory::buildUpdateChecker() is typed as a broad union; narrowing it
+        # would require referencing the version-suffixed (v5pX) class names, which
+        # break on every plugin-update-checker minor release.
+        -
+            message: '#Call to an undefined method YahnisElsts\\PluginUpdateChecker.*#'
+            path: gutenberg-downgrade.php

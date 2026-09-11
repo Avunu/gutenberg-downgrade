@@ -1,0 +1,36 @@
+<?xml version="1.0"?>
+<!--
+    Pure unit suite. No database, no WordPress: Brain Monkey defines the
+    WordPress functions, and tests/Support/wp-doubles.php the few core classes
+    the plugin type-hints (WP_Scripts, WP_Styles, WP_Block_Type_Registry).
+
+    Tests that need the vendored Gutenberg build read it from
+    GUTENBERG_DOWNGRADE_ASSETS (default: assets/gutenberg in the checkout) and
+    skip when it is absent.
+-->
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="tools/vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="bootstrap/unit.php"
+         colors="true"
+         beStrictAboutTestsThatDoNotTestAnything="true"
+         beStrictAboutOutputDuringTests="true"
+         failOnWarning="true"
+         failOnRisky="true"
+         failOnDeprecation="true"
+         failOnNotice="true"
+         cacheDirectory=".phpunit.cache"
+         displayDetailsOnTestsThatTriggerDeprecations="true"
+         displayDetailsOnTestsThatTriggerNotices="true"
+         displayDetailsOnTestsThatTriggerWarnings="true">
+    <testsuites>
+        <testsuite name="unit">
+            <directory suffix="Test.php">Unit</directory>
+        </testsuite>
+    </testsuites>
+
+    <source>
+        <include>
+            <directory suffix=".php">../src</directory>
+        </include>
+    </source>
+</phpunit>

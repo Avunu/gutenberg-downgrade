@@ -1,0 +1,26 @@
+{
+	// The harness runs on Node 22's native type stripping (`node run-e2e.mts`),
+	// so it must stay erasable-syntax-only and import with explicit .mts
+	// extensions. tsc only type-checks it (root `npm run check:types`).
+	"compilerOptions": {
+		"target": "ES2023",
+		// "bundler" resolution: @wp-playground/cli's .d.ts files use extensionless
+		// relative imports, which NodeNext resolution rejects.
+		"module": "ESNext",
+		"moduleResolution": "bundler",
+		"lib": ["ES2023", "DOM"],
+		"types": ["node"],
+		"noEmit": true,
+		"allowImportingTsExtensions": true,
+		"erasableSyntaxOnly": true,
+		"verbatimModuleSyntax": true,
+		"strict": true,
+		"noUnusedLocals": true,
+		"noUnusedParameters": true,
+		"noFallthroughCasesInSwitch": true,
+		"noUncheckedIndexedAccess": true,
+		"skipLibCheck": true,
+		"forceConsistentCasingInFileNames": true
+	},
+	"include": ["*.mts"]
+}

@@ -1,0 +1,73 @@
+<?php
+
+/**
+ * Plugin Name:       Gutenberg Downgrade
+ * Plugin URI:        https://github.com/Avunu/gutenberg-downgrade
+ * Description:       Loads the Gutenberg 11.9.1 block editor (the WordPress 5.9 series) on current WordPress releases, for sites whose page builder clashes with the modern editor. Configure via wp-config.php — no admin settings.
+ * x-release-please-start-version
+ * Version:           0.1.0
+ * x-release-please-end
+ * Requires PHP:      8.4
+ * Requires at least: 7.1
+ * Tested up to:      7.1
+ * Author:            Avunu
+ * Author URI:        https://avunu.io/
+ * License:           GPL-2.0-or-later
+ * License URI:       https://www.gnu.org/licenses/gpl-2.0.html
+ * Text Domain:       gutenberg-downgrade
+ * Update URI:        https://github.com/Avunu/gutenberg-downgrade
+ *
+ * ============================================================================
+ * WHAT IT DOES
+ * ============================================================================
+ * On wp-admin screens, REST requests and admin-ajax it serves the `wp-*`
+ * package scripts and styles, React 17.0.1 and the core-block definitions from
+ * the bundled Gutenberg 11.9.1 build instead of WordPress core's. The public
+ * front end, cron and WP-CLI keep core's block library untouched. The Site
+ * Editor, Font Library and Connectors screens are excluded (they need the
+ * modern package stack).
+ *
+ * ============================================================================
+ * CONFIGURATION (wp-config.php, all optional)
+ * ============================================================================
+ *   define('GUTENBERG_DOWNGRADE_DISABLE', true);
+ *       Kill switch: keep the plugin active but load core's editor everywhere.
+ *
+ *   define('GUTENBERG_DOWNGRADE_BYPASS_PAGES', ['site-editor.php', 'font-library.php']);
+ *       Replace the list of wp-admin screens ($pagenow values) that keep core's
+ *       editor stack. Default: site-editor.php, font-library.php,
+ *       options-connectors.php.
+ *
+ * Filters: gutenberg_downgrade_active, gutenberg_downgrade_bypass_pages,
+ * gutenberg_downgrade_retired_handles, gutenberg_downgrade_editor_settings.
+ */
+
+declare(strict_types=1);
+
+defined('WPINC') || exit;
+
+define('GUTENBERG_DOWNGRADE_FILE', __FILE__);
+define('GUTENBERG_DOWNGRADE_DIR', __DIR__ . '/');
+
+$gutenbergDowngradeAutoload = __DIR__ . '/vendor/autoload.php';
+if (!is_file($gutenbergDowngradeAutoload)) {
+    add_action('admin_notices', static function (): void {
+        echo '<div class="notice notice-error"><p><strong>Gutenberg Downgrade:</strong> dependencies are missing — run <code>composer install</code> or install the built release zip.</p></div>';
+    });
+    return;
+}
+require_once $gutenbergDowngradeAutoload;
+
+// Self-update from GitHub releases. The built zip attached to each release bundles
+// vendor/ and assets/gutenberg/, so end users never need Composer or Nix.
+require_once __DIR__ . '/vendor/yahnis-elsts/plugin-update-checker/plugin-update-checker.php';
+
+$gutenbergDowngradeUpdateChecker = \YahnisElsts\PluginUpdateChecker\v5\PucFactory::buildUpdateChecker(
+    'https://github.com/Avunu/gutenberg-downgrade/',
+    __FILE__,
+    'gutenberg-downgrade'
+);
+// Download the built release asset, not GitHub's source tarball (which lacks vendor/ and assets/gutenberg/).
+$gutenbergDowngradeUpdateChecker->getVcsApi()->enableReleaseAssets('/gutenberg-downgrade\.zip$/');
+
+add_action('plugins_loaded', [\GutenbergDowngrade\Plugin::class, 'init']);

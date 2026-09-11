@@ -1,0 +1,126 @@
+name: Check
+
+# Quality gates on every push and pull request (so Dependabot PRs are gated before
+# auto-merge). Jobs:
+#   • types      — oxfmt + oxlint + tsc over the browser shim and the playground harness
+#   • nix-checks — the hermetic derivations: phpstan (level 8), phpcs (PSR-12), the PHPUnit
+#                  unit suite, the audit of the vendored 11.9 block PHP, the asset manifest
+#                  and the plugin header
+#   • playground — the built plugin mounted into WordPress Playground: PHP-level assertions
+#                  and a headless-Chrome pass over the editor, across WordPress versions
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  types:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            tests/playground/package-lock.json
+
+      - run: npm ci
+      - run: npm --prefix tests/playground ci
+      - run: npm run check
+
+  nix-checks:
+    name: check / ${{ matrix.check }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        check:
+          - plugin-header
+          - phpstan
+          - phpcs
+          - unit
+          - block-audit
+          - manifest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: DeterminateSystems/nix-installer-action@main
+
+      # Evaluating the package set performs a full-history builtins.fetchGit
+      # clone per Composer package (composition-c4 fetches with allRefs=true);
+      # no binary cache covers ~/.cache/nix/gitv3.
+      - name: Cache Nix git fetches
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.cache/nix/gitv3
+            ~/.cache/nix/fetcher-cache-v*.sqlite*
+          key: nix-fetchgit-${{ hashFiles('composer.lock', 'tests/tools/composer.lock') }}
+          restore-keys: nix-fetchgit-
+
+      - run: nix build -L --no-link ".#checks.x86_64-linux.${{ matrix.check }}"
+
+  playground:
+    name: playground / WordPress ${{ matrix.wp }} / PHP ${{ matrix.php }}
+    runs-on: ubuntu-latest
+    # A continue-on-error job still reports success to downstream `needs`, so a
+    # broken WordPress trunk (or the informational PHP 8.3 leg) can never block.
+    continue-on-error: ${{ matrix.wp == 'nightly' || matrix.php == '8.3' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        wp: ["7.1", "latest", "nightly"]
+        php: ["8.4"]
+        include:
+          - wp: latest
+            php: "8.3"
+    env:
+      WP_VERSION: ${{ matrix.wp }}
+      PHP_VERSION: ${{ matrix.php }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: DeterminateSystems/nix-installer-action@main
+
+      - name: Cache Nix git fetches
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.cache/nix/gitv3
+            ~/.cache/nix/fetcher-cache-v*.sqlite*
+          key: nix-fetchgit-${{ hashFiles('composer.lock', 'tests/tools/composer.lock') }}
+          restore-keys: nix-fetchgit-
+
+      # The harness mounts the built plugin (vendor/ + assets/gutenberg/ included),
+      # exactly what the release zip contains.
+      - run: nix build .#default -L
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: tests/playground/package-lock.json
+
+      - run: npm --prefix tests/playground ci
+
+      - name: PHP-level assertions
+        run: npm --prefix tests/playground run test:e2e
+
+      - uses: browser-actions/setup-chrome@v2
+        id: setup-chrome
+
+      - name: Headless browser pass
+        run: npm --prefix tests/playground run test:browser
+        env:
+          CHROME_PATH: ${{ steps.setup-chrome.outputs.chrome-path }}

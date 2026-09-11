@@ -1,0 +1,25 @@
+{
+	"name": "gutenberg-downgrade",
+	"version": "0.1.0",
+	"private": true,
+	"description": "Type-checking and lint tooling for the gutenberg-downgrade browser shim and the wp-playground test harness. No build step — the shipped JS in assets/js is plain, type-checked JavaScript.",
+	"license": "GPL-2.0-or-later",
+	"type": "module",
+	"scripts": {
+		"check:types": "tsc --noEmit && tsc --noEmit -p tests/playground/tsconfig.json",
+		"lint": "oxlint .",
+		"lint:fix": "oxlint --fix .",
+		"format": "oxfmt .",
+		"format:check": "oxfmt --check .",
+		"check": "npm run format:check && npm run lint && npm run check:types",
+		"test:e2e": "node tests/playground/run-e2e.mts",
+		"test:browser": "node tests/playground/run-browser.mts",
+		"test": "npm run test:e2e && npm run test:browser",
+		"upgrade": "npx npm-check-updates -u && npm install"
+	},
+	"devDependencies": {
+		"oxfmt": "^0.67.0",
+		"oxlint": "^1.82.0",
+		"typescript": "^7.0.2"
+	}
+}

@@ -1,0 +1,17 @@
+{
+	"name": "gutenberg-downgrade-tests",
+	"version": "0.0.0",
+	"private": true,
+	"description": "wp-playground based runtime tests for gutenberg-downgrade. Isolated from the root package so its heavy deps (@wp-playground/cli, playwright-core) never touch the Nix build's package-lock.json.",
+	"type": "module",
+	"scripts": {
+		"test:e2e": "node run-e2e.mts",
+		"test:browser": "node run-browser.mts",
+		"test": "node run-e2e.mts && node run-browser.mts"
+	},
+	"devDependencies": {
+		"@types/node": "^24.0.0",
+		"@wp-playground/cli": "^3.1.44",
+		"playwright-core": "^1.49.0"
+	}
+}

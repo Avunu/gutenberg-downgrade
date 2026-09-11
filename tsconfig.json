@@ -1,0 +1,20 @@
+{
+	"compilerOptions": {
+		"allowJs": true,
+		"checkJs": true,
+		"noEmit": true,
+		"target": "ES2017",
+		"module": "ESNext",
+		"moduleResolution": "bundler",
+		"lib": ["ES2017", "DOM", "DOM.Iterable"],
+		"types": [],
+		"strict": true,
+		"noUnusedLocals": true,
+		"noUnusedParameters": true,
+		"skipLibCheck": true,
+		"forceConsistentCasingInFileNames": true
+	},
+	// assets/js/compat.js is inlined verbatim into the `wp-blocks` script by
+	// ScriptOverrides::compatScript(); it must stay a plain ES2017 script.
+	"include": ["assets/js/**/*.js", "types/**/*.d.ts"]
+}

@@ -1,0 +1,72 @@
+<?xml version="1.0"?>
+<!--
+    PSR-12, not the WordPress coding standard.
+
+    WPCS mandates tabs, Yoda conditions, snake_case function names and
+    class-my-class.php filenames. This codebase is deliberately PSR-4 with
+    camelCase methods and 4-space indentation, so applying WPCS wholesale would
+    produce thousands of errors describing a style the project has chosen not to
+    follow. nixpkgs also ships PHP_CodeSniffer 4.x while WPCS 3.x requires ^3.9.
+
+    Run through Nix:
+      nix build .#checks.x86_64-linux.phpcs -L
+-->
+<ruleset name="gutenberg-downgrade">
+    <description>PSR-12 for the plugin source and its tests.</description>
+
+    <file>gutenberg-downgrade.php</file>
+    <file>src</file>
+    <file>config</file>
+    <file>bin</file>
+    <!--
+        Test directories are listed individually rather than as tests: the
+        exclude-pattern below is not enough to stop PHPCS walking
+        tests/tools/vendor, and scanning the whole toolchain is slow.
+    -->
+    <file>tests/Unit</file>
+    <file>tests/Support</file>
+    <file>tests/bootstrap</file>
+    <file>tests/audit</file>
+
+    <exclude-pattern>*/vendor/*</exclude-pattern>
+    <exclude-pattern>*/node_modules/*</exclude-pattern>
+    <!-- The vendored Gutenberg build is third-party code, audited not styled. -->
+    <exclude-pattern>*/assets/gutenberg/*</exclude-pattern>
+    <!--
+        PHPStan's result cache for the block audit (tests/audit/phpstan-blocks.neon
+        tmpDir) is generated PHP inside a scanned directory; one file alone is
+        tens of MB and exhausts memory_limit.
+    -->
+    <exclude-pattern>*/.phpstan-cache/*</exclude-pattern>
+
+    <arg name="extensions" value="php"/>
+    <arg name="basepath" value="."/>
+    <arg name="colors"/>
+    <arg value="sp"/>
+
+    <!-- Warnings are advisory; only errors fail the build. -->
+    <config name="ignore_warnings_on_exit" value="1"/>
+    <ini name="memory_limit" value="1G"/>
+    <arg name="report-width" value="120"/>
+
+    <rule ref="PSR12"/>
+
+    <!-- Bootstraps and CLI scripts exist to cause side effects; that is their job. -->
+    <rule ref="PSR1.Files.SideEffects">
+        <exclude-pattern>*/tests/bootstrap/*</exclude-pattern>
+        <exclude-pattern>*/tests/audit/*</exclude-pattern>
+        <exclude-pattern>*/bin/*</exclude-pattern>
+        <exclude-pattern>*/gutenberg-downgrade.php</exclude-pattern>
+    </rule>
+
+    <!--
+        The plugin talks to WordPress, whose hook callbacks and metadata arrays
+        legitimately produce long lines; warn rather than fail on width.
+    -->
+    <rule ref="Generic.Files.LineLength">
+        <properties>
+            <property name="lineLimit" value="140"/>
+            <property name="absoluteLineLimit" value="0"/>
+        </properties>
+    </rule>
+</ruleset>

@@ -1,0 +1,19 @@
+{
+	"$schema": "./node_modules/oxlint/configuration_schema.json",
+	"categories": {
+		"correctness": "error",
+		"suspicious": "error",
+		"perf": "error"
+	},
+	"plugins": ["import", "unicorn", "oxc", "typescript"],
+	"ignorePatterns": ["assets/gutenberg", "vendor", "node_modules", "tests/tools", "**/*.d.ts"],
+	"rules": {
+		"eqeqeq": ["error", "always", { "null": "ignore" }],
+		// The harness prints its own progress and tallies to the console.
+		"no-console": "off",
+		// WordPress' JS API is full of __unstable*/__experimental* names.
+		"no-underscore-dangle": "off",
+		// Polling the editor's save state is sequential by nature.
+		"no-await-in-loop": "off"
+	}
+}

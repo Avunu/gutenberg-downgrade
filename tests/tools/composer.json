@@ -1,0 +1,19 @@
+{
+    "name": "avunu/gutenberg-downgrade-test-tools",
+    "description": "Test runners for gutenberg-downgrade. Deliberately separate from the plugin's own composer.json: composition-c4's fetchComposerDeps clones lock.packages ++ lock.packages-dev at eval time with allRefs=true, so anything added to the root manifest is paid for on every `nix build .#zip`. Static analysers are NOT here either -- phpstan and php-codesniffer come from nixpkgs.",
+    "license": "GPL-2.0-or-later",
+    "require": {
+        "php": ">=8.4",
+        "brain/monkey": "^2.6",
+        "mockery/mockery": "^1.6",
+        "phpunit/phpunit": "^11.5"
+    },
+    "config": {
+        "platform": {
+            "php": "8.4"
+        },
+        "allow-plugins": false,
+        "sort-packages": true,
+        "platform-check": false
+    }
+}
