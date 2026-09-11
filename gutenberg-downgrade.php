@@ -5,7 +5,7 @@
  * Plugin URI:        https://github.com/Avunu/gutenberg-downgrade
  * Description:       Loads the Gutenberg 11.9.1 block editor (the WordPress 5.9 series) on current WordPress releases, for sites whose page builder clashes with the modern editor. Configure via wp-config.php — no admin settings.
  * x-release-please-start-version
- * Version:           0.1.0
+ * Version:           0.1.1
  * x-release-please-end
  * Requires PHP:      8.4
  * Requires at least: 7.1
