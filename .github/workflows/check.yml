@@ -1,7 +1,8 @@
 name: Check
 
 # Quality gates on every push and pull request (so Dependabot PRs are gated before
-# auto-merge). Jobs:
+# auto-merge). Also called from release.yml to re-confirm the tagged commit
+# before the zip is published. Jobs:
 #   • types      — oxfmt + oxlint + tsc over the browser shim and the playground harness
 #   • nix-checks — the hermetic derivations: phpstan (level 8), phpcs (PSR-12), the PHPUnit
 #                  unit suite, the audit of the vendored 11.9 block PHP, the asset manifest
@@ -13,12 +14,17 @@ on:
     branches:
       - main
   pull_request:
+  # Required for release.yml's `uses: ./.github/workflows/check.yml`.
+  workflow_call:
 
 permissions:
   contents: read
 
+# github.workflow is the caller's name when invoked via workflow_call, so the
+# standalone Check run and the Release-triggered one on the same push to main
+# get separate groups instead of cancelling each other.
 concurrency:
-  group: check-${{ github.ref }}
+  group: check-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
