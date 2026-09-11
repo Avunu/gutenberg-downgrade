@@ -15,7 +15,7 @@ export const PLUGIN_VFS = `/wordpress/wp-content/plugins/${PLUGIN_SLUG}`;
 export const THEME = "twentytwentyone";
 
 export const WP_VERSION = process.env.WP_VERSION ?? "latest";
-/** The plugin declares `Requires PHP: 8.4`; WordPress enforces it on activation. */
+/** The plugin declares `Requires PHP: 8.3`; WordPress enforces it on activation. */
 export const PHP_VERSION = (process.env.PHP_VERSION ?? "8.4") as "8.3" | "8.4";
 
 /**

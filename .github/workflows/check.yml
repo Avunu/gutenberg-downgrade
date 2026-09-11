@@ -5,8 +5,8 @@ name: Check
 # before the zip is published. Jobs:
 #   • types      — oxfmt + oxlint + tsc over the browser shim and the playground harness
 #   • nix-checks — the hermetic derivations: phpstan (level 8), phpcs (PSR-12), the PHPUnit
-#                  unit suite, the audit of the vendored 11.9 block PHP, the asset manifest
-#                  and the plugin header
+#                  unit suite (on PHP 8.4 and the 8.3 floor), the audit of the vendored 11.9
+#                  block PHP, the asset manifest and the plugin header
 #   • playground — the built plugin mounted into WordPress Playground: PHP-level assertions
 #                  and a headless-Chrome pass over the editor, across WordPress versions
 on:
@@ -56,6 +56,7 @@ jobs:
           - phpstan
           - phpcs
           - unit
+          - unit-php83
           - block-audit
           - manifest
     steps:
@@ -81,14 +82,15 @@ jobs:
     name: playground / WordPress ${{ matrix.wp }} / PHP ${{ matrix.php }}
     runs-on: ubuntu-latest
     # A continue-on-error job still reports success to downstream `needs`, so a
-    # broken WordPress trunk (or the informational PHP 8.3 leg) can never block.
-    continue-on-error: ${{ matrix.wp == 'nightly' || matrix.php == '8.3' }}
+    # broken WordPress trunk can never block.
+    continue-on-error: ${{ matrix.wp == 'nightly' }}
     strategy:
       fail-fast: false
       matrix:
         wp: ["7.1", "latest", "nightly"]
         php: ["8.4"]
         include:
+          # The declared floor (Requires PHP: 8.3), on the WordPress most sites run.
           - wp: latest
             php: "8.3"
     env:

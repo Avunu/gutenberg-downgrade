@@ -21,7 +21,7 @@ The public front end, cron and WP-CLI are untouched: they keep WordPress core's 
 ## Requirements
 
 - WordPress 7.1+
-- PHP 8.4+
+- PHP 8.3+
 - A classic theme. Block themes load, but the Site Editor and template editing are not supported by the 11.9 editor on current core (a notice on the Plugins screen says so).
 - The Gutenberg plugin must not be active (this plugin stands down if it is).
 

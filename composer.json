@@ -11,7 +11,7 @@
     }
   ],
   "require": {
-    "php": ">=8.4",
+    "php": ">=8.3",
     "yahnis-elsts/plugin-update-checker": "^5.6"
   },
   "require-dev": {
@@ -30,7 +30,7 @@
     "optimize-autoloader": true,
     "sort-packages": true,
     "platform": {
-      "php": "8.4.0"
+      "php": "8.3.0"
     },
     "platform-check": false
   },

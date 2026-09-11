@@ -5,7 +5,10 @@ includes:
 
 parameters:
     level: 8
-    phpVersion: 80400
+    # The supported range; PHPStan checks against both ends.
+    phpVersion:
+        min: 80300
+        max: 80400
     paths:
         - gutenberg-downgrade.php
         - src/

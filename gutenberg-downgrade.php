@@ -7,7 +7,7 @@
  * x-release-please-start-version
  * Version:           0.1.1
  * x-release-please-end
- * Requires PHP:      8.4
+ * Requires PHP:      8.3
  * Requires at least: 7.1
  * Tested up to:      7.1
  * Author:            Avunu

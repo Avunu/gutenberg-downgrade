@@ -28,23 +28,30 @@
         };
         inherit (pkgs) lib stdenvNoCC;
 
-        php = pkgs.php84.buildEnv {
-          extensions =
-            { enabled, all }:
-            enabled
-            ++ (with all; [
-              curl
-              mbstring
-              openssl
-              tokenizer
-              fileinfo
-            ]);
-          # PHPStan parses the full WordPress stubs; the 128M default is not enough.
-          extraConfig = ''
-            memory_limit = 2G
-            error_reporting = E_ALL
-          '';
-        };
+        mkPhp =
+          base:
+          base.buildEnv {
+            extensions =
+              { enabled, all }:
+              enabled
+              ++ (with all; [
+                curl
+                mbstring
+                openssl
+                tokenizer
+                fileinfo
+              ]);
+            # PHPStan parses the full WordPress stubs; the 128M default is not enough.
+            extraConfig = ''
+              memory_limit = 2G
+              error_reporting = E_ALL
+            '';
+          };
+
+        # The toolchain runs on the newest supported PHP; php83 exists only to
+        # prove the plugin still runs on the declared floor (Requires PHP).
+        php = mkPhp pkgs.php84;
+        php83 = mkPhp pkgs.php83;
 
         nodejs = pkgs.nodejs_22;
 
@@ -317,6 +324,23 @@
           ln -s ${testTools}/vendor tests/tools/vendor
           export HOME="$TMPDIR"
         '';
+
+        # The PHPUnit suite under a given PHP build.
+        unitCheck =
+          name: phpPkg:
+          pkgs.runCommand name
+            {
+              nativeBuildInputs = [ phpPkg ];
+              inherit src;
+            }
+            ''
+              set -euo pipefail
+              ${checkWorkTree pluginDir}
+              # Through the interpreter: vendor/bin/phpunit's shebang needs
+              # /usr/bin/env, which the sandbox does not have.
+              php tests/tools/vendor/bin/phpunit -c tests/phpunit-unit.xml --do-not-cache-result
+              touch "$out"
+            '';
       in
       {
         devShells.default = pkgs.mkShell {
@@ -419,20 +443,9 @@
                 touch "$out"
               '';
 
-          unit =
-            pkgs.runCommand "check-unit"
-              {
-                nativeBuildInputs = [ php ];
-                inherit src;
-              }
-              ''
-                set -euo pipefail
-                ${checkWorkTree pluginDir}
-                # Through the interpreter: vendor/bin/phpunit's shebang needs
-                # /usr/bin/env, which the sandbox does not have.
-                php tests/tools/vendor/bin/phpunit -c tests/phpunit-unit.xml --do-not-cache-result
-                touch "$out"
-              '';
+          unit = unitCheck "check-unit" php;
+          # The same suite on the declared floor (Requires PHP: 8.3).
+          unit-php83 = unitCheck "check-unit-php83" php83;
 
           # Static audit of the vendored 11.9 block PHP against current core:
           # undefined functions/classes (PHPStan level 0 with the WordPress
