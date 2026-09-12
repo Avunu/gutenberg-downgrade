@@ -33,6 +33,15 @@ final class ScriptOverrides
     ];
 
     /**
+     * Inline shims, each attached to the bundle that defines the API it
+     * patches so it runs the moment that package object exists.
+     */
+    private const SHIMS = [
+        'wp-blocks'       => 'compat.js',
+        'wp-block-editor' => 'block-editor-compat.js',
+    ];
+
+    /**
      * set_translations() on these exhausts memory: wp-i18n would depend on
      * itself, and wp-polyfill/wp-hooks are its own dependencies (core #46089).
      */
@@ -59,7 +68,7 @@ final class ScriptOverrides
 
         self::overrideVendor($scripts, $manifest);
         self::overridePackages($scripts, $manifest);
-        self::injectCompatScript($scripts);
+        self::injectShims($scripts);
     }
 
     /**
@@ -83,18 +92,18 @@ final class ScriptOverrides
     }
 
     /**
-     * Contents of assets/js/compat.js, inlined after wp-blocks.
+     * Contents of one of the assets/js shims.
      */
-    public static function compatScript(): string
+    public static function shimScript(string $file): string
     {
-        static $script = null;
+        static $cache = [];
 
-        if ($script === null) {
-            $contents = file_get_contents(GUTENBERG_DOWNGRADE_DIR . 'assets/js/compat.js');
-            $script = is_string($contents) ? trim($contents) : '';
+        if (!isset($cache[$file])) {
+            $contents = file_get_contents(GUTENBERG_DOWNGRADE_DIR . 'assets/js/' . $file);
+            $cache[$file] = is_string($contents) ? trim($contents) : '';
         }
 
-        return $script;
+        return $cache[$file];
     }
 
     /**
@@ -178,21 +187,23 @@ final class ScriptOverrides
         unset($script->extra['module_dependencies']);
     }
 
-    private static function injectCompatScript(WP_Scripts $scripts): void
+    private static function injectShims(WP_Scripts $scripts): void
     {
-        $blocks = $scripts->registered['wp-blocks'] ?? null;
-        $shim = self::compatScript();
-        if ($blocks === null || $shim === '') {
-            return;
-        }
+        foreach (self::SHIMS as $handle => $file) {
+            $script = $scripts->registered[$handle] ?? null;
+            $shim = self::shimScript($file);
+            if ($script === null || $shim === '') {
+                continue;
+            }
 
-        // The same _WP_Dependency can be visited by several WP_Scripts
-        // instances; only ever attach the shim once.
-        $after = $blocks->extra['after'] ?? [];
-        if (is_array($after) && in_array($shim, $after, true)) {
-            return;
-        }
+            // The same _WP_Dependency can be visited by several WP_Scripts
+            // instances; only ever attach each shim once.
+            $after = $script->extra['after'] ?? [];
+            if (is_array($after) && in_array($shim, $after, true)) {
+                continue;
+            }
 
-        $scripts->add_inline_script('wp-blocks', $shim, 'after');
+            $scripts->add_inline_script($handle, $shim, 'after');
+        }
     }
 }

@@ -50,6 +50,7 @@ final class ScriptOverridesTest extends UnitTestCase
         $scripts->add('wp-i18n', '/wp-includes/js/dist/i18n.min.js', ['wp-hooks'], 'core', 1);
         $scripts->add('wp-blocks', '/wp-includes/js/dist/blocks.min.js', ['react-jsx-runtime', 'wp-private-apis'], 'core', 1);
         $scripts->add_inline_script('wp-blocks', 'wp.blocks.setCategories([]);', 'after');
+        $scripts->add('wp-block-editor', '/wp-includes/js/dist/block-editor.min.js', ['wp-blocks'], 'core', 1);
         $scripts->add('wp-edit-post', '/wp-includes/js/dist/edit-post.min.js', ['wp-commands', 'wp-private-apis'], 'core', 1);
         $scripts->add_data('wp-edit-post', 'module_dependencies', [['id' => '@wordpress/route', 'import' => 'static']]);
         $scripts->add('wp-commands', '/wp-includes/js/dist/commands.min.js', [], 'core', 1);
@@ -104,7 +105,12 @@ final class ScriptOverridesTest extends UnitTestCase
 
         $after = $scripts->registered['wp-blocks']->extra['after'];
         self::assertSame('wp.blocks.setCategories([]);', $after[0], 'core inline scripts survive the in-place override');
-        self::assertStringContainsString('registerBlockBindingsSource', $after[1], 'the compat shim is appended');
+        self::assertStringContainsString('registerBlockBindingsSource', $after[1], 'the wp-blocks shim is appended');
+        self::assertStringContainsString(
+            'useBlockBindingsUtils',
+            $scripts->registered['wp-block-editor']->extra['after'][0],
+            'the wp-block-editor shim is appended to the bundle that defines the package'
+        );
         self::assertSame(self::BASE . 'build/commands/index.min.js', $scripts->registered['wp-commands']->src, 'wp-edit-post depends on it');
         self::assertSame('/wp-includes/js/dist/core-commands.min.js', $scripts->registered['wp-core-commands']->src, 'not in this manifest: untouched');
         self::assertArrayHasKey('wp-private-apis', $scripts->registered, 'other 7.x-only handles stay registered');
@@ -124,6 +130,7 @@ final class ScriptOverridesTest extends UnitTestCase
         ScriptOverrides::apply($scripts);
 
         self::assertCount(2, $scripts->registered['wp-blocks']->extra['after'], 'the shim is attached exactly once');
+        self::assertCount(1, $scripts->registered['wp-block-editor']->extra['after'], 'and so is the block-editor shim');
         self::assertCount(1, array_keys($scripts->registered['wp-edit-post']->deps, 'wp-i18n', true));
         self::assertCount(1, array_keys($scripts->registered['wp-edit-post']->deps, 'postbox', true));
     }
@@ -164,10 +171,20 @@ final class ScriptOverridesTest extends UnitTestCase
 
     public function testCompatScriptIsThePlainShim(): void
     {
-        $shim = ScriptOverrides::compatScript();
+        $shim = ScriptOverrides::shimScript('compat.js');
 
         self::assertStringStartsWith('// Inlined verbatim', $shim);
         self::assertStringContainsString('gutenbergDowngradeHiddenBlocks', $shim);
+        self::assertStringNotContainsString('import ', $shim);
+    }
+
+    public function testBlockEditorShimBackportsTheBlockBindingsHook(): void
+    {
+        $shim = ScriptOverrides::shimScript('block-editor-compat.js');
+
+        self::assertStringStartsWith('// Inlined verbatim', $shim);
+        self::assertStringContainsString('useBlockBindingsUtils', $shim);
+        self::assertStringContainsString('useBlockEditContext', $shim);
         self::assertStringNotContainsString('import ', $shim);
     }
 }

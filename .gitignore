@@ -16,3 +16,5 @@ assets/gutenberg
 # Test artefacts.
 .phpunit.result.cache
 tests/audit/.phpstan-cache
+
+cwicly

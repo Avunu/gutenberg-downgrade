@@ -14,7 +14,7 @@
 		"skipLibCheck": true,
 		"forceConsistentCasingInFileNames": true
 	},
-	// assets/js/compat.js is inlined verbatim into the `wp-blocks` script by
-	// ScriptOverrides::compatScript(); it must stay a plain ES2017 script.
+	// The assets/js shims are inlined verbatim into the package scripts they
+	// patch by ScriptOverrides::shimScript(); they must stay plain ES2017.
 	"include": ["assets/js/**/*.js", "types/**/*.d.ts"]
 }

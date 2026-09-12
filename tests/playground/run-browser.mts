@@ -142,7 +142,8 @@ try {
 	await waitForEditor(page);
 
 	// Package exports a page builder built for the WordPress 6.1–6.6 packages
-	// reads on the post editor (what Cwicly 1.4.4's bundle binds), as `wp.<pkg>.<name>`.
+	// reads on the post editor (what Cwicly 1.4.4's bundle binds), as `wp.<pkg>.<name>`,
+	// plus the post-18.5 exports assets/js/block-editor-compat.js backports.
 	const BUILDER_EXPORTS = [
 		"editPost.PluginSidebar",
 		"editPost.PluginSidebarMoreMenuItem",
@@ -154,6 +155,10 @@ try {
 		"compose.useCopyToClipboard",
 		"coreData.useEntityRecord",
 		"keyboardShortcuts.useShortcut",
+		// Backported by the shim. Secure Custom Fields calls this from an
+		// `editor.BlockEdit` filter, so without it every block in the post
+		// crashes to "This block has encountered an error".
+		"blockEditor.useBlockBindingsUtils",
 	];
 	const facts = await page.evaluate((wanted: string[]) => {
 		const g = globalThis as unknown as {
