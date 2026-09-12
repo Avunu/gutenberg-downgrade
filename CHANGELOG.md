@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.1](https://github.com/Avunu/gutenberg-downgrade/compare/v1.0.0...v1.0.1) (2026-09-12)
+
+
+### Bug Fixes
+
+* compatibility with SCF ([6b1e378](https://github.com/Avunu/gutenberg-downgrade/commit/6b1e3785ef6f6ebd9154e6dbc738f5b4e7bd1ec6))
+
 ## [1.0.0](https://github.com/Avunu/gutenberg-downgrade/compare/v0.1.1...v1.0.0) (2026-09-11)
 
 
