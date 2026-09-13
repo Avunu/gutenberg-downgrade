@@ -7,9 +7,12 @@
 // renders without PHP deprecations.
 import {
 	bootPlayground,
+	CLASSIC_THEME,
 	phpJson,
 	PLUGIN_PATH,
 	PLUGIN_SLUG,
+	switchTheme,
+	THEME,
 	WP_VERSION,
 	PHP_VERSION,
 } from "./lib.mts";
@@ -37,6 +40,7 @@ interface Dependency {
 interface AdminState {
 	scripts: Record<string, Dependency | null>;
 	styles: Record<string, Dependency | null>;
+	unregisteredEditSiteDeps: string[];
 	commandPaletteHooked: boolean;
 	patterns: string[];
 	blocks: Record<
@@ -71,7 +75,7 @@ try {
 	);
 	console.log(`  WordPress ${env.value.wp}, PHP ${env.value.php}, theme ${env.value.theme}`);
 	t.check("the plugin is active", env.value.active);
-	t.check("a classic theme is active", !env.value.blockTheme, env.value.theme);
+	t.check("a block theme is active", env.value.blockTheme, env.value.theme);
 	t.check(
 		"the vendored build is Gutenberg 18.5.0",
 		env.value.gutenberg === "18.5.0",
@@ -114,13 +118,20 @@ try {
 				'wp-core-commands' => $dep($scripts, 'wp-core-commands'),
 				'wp-private-apis' => $dep($scripts, 'wp-private-apis'),
 				'wp-preferences' => $dep($scripts, 'wp-preferences'),
+				'wp-edit-site' => $dep($scripts, 'wp-edit-site'),
+				'wp-router' => $dep($scripts, 'wp-router'),
 			],
 			'styles' => [
 				'wp-edit-post' => $dep($styles, 'wp-edit-post'),
 				'wp-components' => $dep($styles, 'wp-components'),
 				'wp-edit-blocks' => $dep($styles, 'wp-edit-blocks'),
 				'wp-base-styles' => $dep($styles, 'wp-base-styles'),
+				'wp-edit-site' => $dep($styles, 'wp-edit-site'),
 			],
+			'unregisteredEditSiteDeps' => array_values(array_filter(
+				$scripts->registered['wp-edit-site']->deps ?? [],
+				static fn(string $h): bool => !isset($scripts->registered[$h])
+			)),
 			'commandPaletteHooked' => has_action('admin_enqueue_scripts', 'wp_enqueue_command_palette_assets') !== false,
 			'patterns' => array_column(WP_Block_Patterns_Registry::get_instance()->get_all_registered(), 'name'),
 			'blocks' => [
@@ -211,6 +222,35 @@ try {
 		String(a.scripts["wp-commands"]?.src),
 	);
 	t.check("the admin-wide command palette is unhooked", !a.commandPaletteHooked);
+	t.check(
+		"wp-edit-site is served from the vendored build",
+		a.scripts["wp-edit-site"]?.src.includes(`${pluginUrl}build/edit-site/index.min.js`),
+		a.scripts["wp-edit-site"]?.src,
+	);
+	t.check(
+		"every dependency of the 18.5 edit-site bundle is a handle core registers",
+		a.unregisteredEditSiteDeps.length === 0,
+		a.unregisteredEditSiteDeps.join(","),
+	);
+	t.check(
+		"wp-router (the site editor's router) is served from the vendored build",
+		a.scripts["wp-router"]?.src.includes(`${pluginUrl}build/router/`),
+		a.scripts["wp-router"]?.src,
+	);
+	t.check(
+		"wp-edit-site style is served from the vendored build with the 18.5 graph",
+		(a.styles["wp-edit-site"]?.src.includes(`${pluginUrl}build/edit-site/style.css`) ?? false) &&
+			JSON.stringify(a.styles["wp-edit-site"]?.deps) ===
+				JSON.stringify([
+					"wp-components",
+					"wp-block-editor",
+					"wp-editor",
+					"wp-edit-blocks",
+					"wp-commands",
+					"wp-preferences",
+				]),
+		JSON.stringify(a.styles["wp-edit-site"]),
+	);
 	t.check("other 7.x-only handles stay registered", a.scripts["wp-private-apis"] !== null);
 	t.check(
 		"wp-edit-post style is served from the vendored build",
@@ -236,8 +276,9 @@ try {
 		JSON.stringify(a.styles["wp-components"]?.deps) === '["dashicons"]',
 	);
 	t.check(
-		"wp-edit-blocks includes the classic layout styles for a classic theme",
-		a.styles["wp-edit-blocks"]?.deps.includes("wp-editor-classic-layout-styles"),
+		"wp-edit-blocks skips the classic layout styles for a theme.json theme",
+		!a.styles["wp-edit-blocks"]?.deps.includes("wp-editor-classic-layout-styles"),
+		JSON.stringify(a.styles["wp-edit-blocks"]?.deps),
 	);
 	t.check(
 		"package styles use style-rtl.css, not a .min suffix",
@@ -378,23 +419,65 @@ try {
 	t.check("REST: core/paragraph is the 18.5 definition", rest.value.paragraph185);
 	t.check("REST: wp-edit-post is the vendored build", rest.value.editPost.includes(pluginUrl));
 
-	// ---- bypassed screens keep core's stack --------------------------------
-	const bypass = await phpJson<{ editPost: string; paragraph185: boolean }>(
-		server,
-		`$scripts = wp_scripts();
+	// ---- the site editor gets the 18.5 stack, the 7.x-only screens do not --
+	const stack = `$scripts = wp_scripts();
 		$b = WP_Block_Type_Registry::get_instance()->get_registered('core/paragraph');
-		return ['editPost' => (string) ($scripts->registered['wp-edit-post']->src ?? ''), 'paragraph185' => isset($b->attributes['content']['__experimentalRole'])];`,
-		{ adminPage: "site-editor.php" },
+		return ['editSite' => (string) ($scripts->registered['wp-edit-site']->src ?? ''), 'paragraph185' => isset($b->attributes['content']['__experimentalRole'])];`;
+	const siteEditor = await phpJson<{ editSite: string; paragraph185: boolean }>(server, stack, {
+		adminPage: "site-editor.php",
+	});
+	t.check(
+		"site-editor.php: wp-edit-site is the vendored build",
+		siteEditor.value.editSite.includes(`${pluginUrl}build/edit-site/`),
+		siteEditor.value.editSite,
+	);
+	t.check("site-editor.php: core/paragraph is the 18.5 definition", siteEditor.value.paragraph185);
+	const bypass = await phpJson<{ editSite: string; paragraph185: boolean }>(server, stack, {
+		adminPage: "font-library.php",
+	});
+	t.check(
+		"font-library.php (7.x-only): wp-edit-site is core's",
+		bypass.value.editSite.includes("/wp-includes/js/dist/"),
+		bypass.value.editSite,
 	);
 	t.check(
-		"site-editor.php: wp-edit-post is core's",
-		bypass.value.editPost.includes("/wp-includes/js/dist/"),
-		bypass.value.editPost,
+		"font-library.php: core/paragraph is core's",
+		!bypass.value.paragraph185 && !bypass.value.editSite.includes(pluginUrl),
+	);
+
+	// ---- a classic theme: what changes, and what 6.6 offered it -----------
+	await switchTheme(server, CLASSIC_THEME);
+	const classic = await phpJson<{
+		blockTheme: boolean;
+		editBlocksDeps: string[];
+		menu: [string, string, string] | null;
+	}>(
+		server,
+		`require_once ABSPATH . 'wp-admin/includes/admin.php';
+		wp_set_current_user(1);
+		// menu.php writes these as file-scope variables; bind them to the globals our admin_menu hook reads.
+		global $menu, $submenu, $_wp_last_utility_menu, $_wp_last_object_menu, $_wp_real_parent_file, $_wp_submenu_nopriv, $_registered_pages, $admin_page_hooks;
+		require ABSPATH . 'wp-admin/menu.php';
+		return [
+			'blockTheme' => wp_is_block_theme(),
+			'editBlocksDeps' => wp_styles()->registered['wp-edit-blocks']->deps,
+			'menu' => $GLOBALS['submenu']['themes.php'][6] ?? null,
+		];`,
+		{ adminPage: "index.php" },
+	);
+	t.check("switched to a classic theme", !classic.value.blockTheme);
+	t.check(
+		"wp-edit-blocks includes the classic layout styles for a classic theme",
+		classic.value.editBlocksDeps.includes("wp-editor-classic-layout-styles"),
+		JSON.stringify(classic.value.editBlocksDeps),
 	);
 	t.check(
-		"site-editor.php: core/paragraph is core's",
-		!bypass.value.paragraph185 && !bypass.value.editPost.includes(pluginUrl),
+		"the Appearance entry is 6.6's Patterns link, not the 7.x style book",
+		classic.value.menu?.[0] === "Patterns" &&
+			classic.value.menu[2] === "site-editor.php?p=/pattern",
+		JSON.stringify(classic.value.menu),
 	);
+	await switchTheme(server, THEME);
 
 	// ---- every block the 18.5 PHP serves renders on current core -----------
 	const render = await phpJson<

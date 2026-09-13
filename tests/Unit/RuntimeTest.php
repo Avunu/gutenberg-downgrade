@@ -25,11 +25,11 @@ final class RuntimeTest extends UnitTestCase
         yield 'REST request'                 => [false, false, 'index.php', $bypass, true, false, true];
         yield 'front end'                    => [false, false, 'index.php', $bypass, false, false, false];
         yield 'cron / CLI (no pagenow)'      => [false, false, null, $bypass, false, false, false];
-        yield 'site editor is bypassed'      => [false, true, 'site-editor.php', $bypass, false, false, false];
+        yield 'site editor'                  => [false, true, 'site-editor.php', $bypass, false, false, true];
         yield 'font library is bypassed'     => [false, true, 'font-library.php', $bypass, false, false, false];
         yield 'connectors are bypassed'      => [false, true, 'options-connectors.php', $bypass, false, false, false];
-        yield 'bypass list is configurable'  => [false, true, 'site-editor.php', ['widgets.php'], false, false, true];
-        yield 'bypass only applies in admin' => [false, false, 'site-editor.php', $bypass, true, false, true];
+        yield 'bypass list is configurable'  => [false, true, 'font-library.php', ['widgets.php'], false, false, true];
+        yield 'bypass only applies in admin' => [false, false, 'font-library.php', $bypass, true, false, true];
         yield 'kill switch wins'             => [true, true, 'post.php', $bypass, true, true, false];
     }
 
@@ -71,11 +71,8 @@ final class RuntimeTest extends UnitTestCase
         self::assertSame($expected, Runtime::pathIsRest($requestPath, $homePath, $prefix));
     }
 
-    public function testDefaultBypassPagesAreTheModernStackScreens(): void
+    public function testDefaultBypassPagesAreThe7xOnlyScreens(): void
     {
-        self::assertSame(
-            ['site-editor.php', 'font-library.php', 'options-connectors.php'],
-            Runtime::DEFAULT_BYPASS_PAGES
-        );
+        self::assertSame(['font-library.php', 'options-connectors.php'], Runtime::DEFAULT_BYPASS_PAGES);
     }
 }

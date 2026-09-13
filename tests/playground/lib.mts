@@ -11,8 +11,13 @@ export const PLUGIN_SLUG = "gutenberg-downgrade";
 export const PLUGIN_PATH = `${PLUGIN_SLUG}/${PLUGIN_SLUG}.php`;
 export const PLUGIN_VFS = `/wordpress/wp-content/plugins/${PLUGIN_SLUG}`;
 
-/** A classic theme, so the editor screens are the ones this plugin targets. */
-export const THEME = "twentytwentyone";
+/** A block theme: the Site Editor is as much this plugin's target as the post editor. */
+export const THEME = "twentytwentyfour";
+/**
+ * Installed alongside, for what only a classic theme has: widgets, the customizer, classic layout
+ * styles.
+ */
+export const CLASSIC_THEME = "twentytwentyone";
 
 export const WP_VERSION = process.env.WP_VERSION ?? "latest";
 /** The plugin declares `Requires PHP: 8.3`; WordPress enforces it on activation. */
@@ -43,9 +48,9 @@ export function pluginDir(): string {
 }
 
 /**
- * Boot a playground server with the built plugin mounted and activated on a classic theme, WP_DEBUG
- * on and displayed so PHP notices from the vendored 18.5 code surface in the page. Dispose with
- * `await server[Symbol.asyncDispose]()`.
+ * Boot a playground server with the built plugin mounted and activated on the block theme (the
+ * classic one installed but inactive), WP_DEBUG on and displayed so PHP notices from the vendored
+ * 18.5 code surface in the page. Dispose with `await server[Symbol.asyncDispose]()`.
  */
 export async function bootPlayground({
 	port = 9400,
@@ -70,6 +75,11 @@ export async function bootPlayground({
 					step: "installTheme",
 					themeData: { resource: "wordpress.org/themes", slug: THEME },
 					options: { activate: true },
+				},
+				{
+					step: "installTheme",
+					themeData: { resource: "wordpress.org/themes", slug: CLASSIC_THEME },
+					options: { activate: false },
 				},
 				{ step: "activatePlugin", pluginPath: PLUGIN_PATH },
 			],
@@ -161,6 +171,17 @@ echo ${JSON.stringify(MARK)} . json_encode(['value' => $__value, 'notices' => $_
 		return JSON.parse(json) as { value: T; notices: string[] };
 	} catch (cause) {
 		throw new Error(`PHP output was not valid JSON: ${json.slice(0, 2000)}`, { cause });
+	}
+}
+
+/** Activate another installed theme for the requests that follow. */
+export async function switchTheme(server: RunCLIServer, slug: string): Promise<void> {
+	const { value } = await phpJson<string>(
+		server,
+		`switch_theme(${JSON.stringify(slug)}); return get_stylesheet();`,
+	);
+	if (value !== slug) {
+		throw new Error(`switch_theme(${slug}) left ${value} active`);
 	}
 }
 

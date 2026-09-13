@@ -22,10 +22,10 @@
  * ============================================================================
  * On wp-admin screens, REST requests and admin-ajax it serves the `wp-*`
  * package scripts and styles, React 18.3.1 and the core-block definitions from
- * the bundled Gutenberg 18.5.0 build instead of WordPress core's. The public
- * front end, cron and WP-CLI keep core's block library untouched. The Site
- * Editor, Font Library and Connectors screens are excluded (they need the
- * modern package stack).
+ * the bundled Gutenberg 18.5.0 build instead of WordPress core's — the post
+ * editor, the Site Editor, widgets and the customizer alike. The public front
+ * end, cron and WP-CLI keep core's block library untouched. The Font Library
+ * and Connectors screens (7.x-only) are excluded.
  *
  * ============================================================================
  * CONFIGURATION (wp-config.php, all optional)
@@ -33,10 +33,9 @@
  *   define('GUTENBERG_DOWNGRADE_DISABLE', true);
  *       Kill switch: keep the plugin active but load core's editor everywhere.
  *
- *   define('GUTENBERG_DOWNGRADE_BYPASS_PAGES', ['site-editor.php', 'font-library.php']);
+ *   define('GUTENBERG_DOWNGRADE_BYPASS_PAGES', ['font-library.php']);
  *       Replace the list of wp-admin screens ($pagenow values) that keep core's
- *       editor stack. Default: site-editor.php, font-library.php,
- *       options-connectors.php.
+ *       editor stack. Default: font-library.php, options-connectors.php.
  *
  * Filters: gutenberg_downgrade_active, gutenberg_downgrade_bypass_pages,
  * gutenberg_downgrade_editor_settings.

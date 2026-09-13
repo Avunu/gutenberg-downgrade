@@ -23,8 +23,6 @@ final class Plugin
             return;
         }
 
-        add_action('admin_notices', [Admin::class, 'blockThemeNotice']);
-
         if (!Runtime::isActive()) {
             return;
         }
@@ -37,6 +35,7 @@ final class Plugin
         StyleOverrides::register();
         BlockRegistry::register($manifest, $config);
         EditorSettings::register();
+        SiteEditor::register();
         Translations::register();
     }
 }

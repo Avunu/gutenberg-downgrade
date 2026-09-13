@@ -14,11 +14,10 @@ namespace GutenbergDowngrade;
 final class Runtime
 {
     /**
-     * Admin screens built on packages that do not exist in Gutenberg 18.5
-     * (@wordpress/boot, dataviews, the 7.x edit-site). They keep core's stack.
+     * Admin screens that only exist in 7.x and are built on packages Gutenberg
+     * 18.5 never had (@wordpress/boot, dataviews). They keep core's stack.
      */
     public const DEFAULT_BYPASS_PAGES = [
-        'site-editor.php',
         'font-library.php',
         'options-connectors.php',
     ];

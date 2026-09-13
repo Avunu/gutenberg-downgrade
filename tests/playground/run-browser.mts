@@ -1,13 +1,17 @@
 // Test B — headless Chrome against the booted WordPress. This is the only test
-// that exercises the 18.5 bundles as a browser would: the editor must mount,
-// throw nothing, run on React 18.3, and round-trip a post through save and reload.
+// that exercises the 18.5 bundles as a browser would: the post editor and the
+// Site Editor must mount, throw nothing, run on React 18.3, and round-trip
+// content (a post, a template, global styles) through save and reload.
 import { chromium, type Page } from "playwright-core";
 import {
 	bootPlayground,
 	chromePath,
+	CLASSIC_THEME,
 	phpJson,
 	PLUGIN_SLUG,
 	PHP_VERSION,
+	switchTheme,
+	THEME,
 	WP_VERSION,
 } from "./lib.mts";
 import { tally } from "./assert.mts";
@@ -42,6 +46,9 @@ function watch(page: Page): Watch {
 		// Chrome reports every 4xx resource as a console error; only our own
 		// assets matter (favicons and the like are noise in a fresh install).
 		if (/Failed to load resource/.test(text) && !m.location().url.includes(PLUGIN_SLUG)) return;
+		// The iframe warning is core's, raised for its own global-styles inline
+		// stylesheet on the site editor canvas (with or without this plugin).
+		if (/was added to the iframe incorrectly/.test(text)) return;
 		w.consoleErrors.push(text.slice(0, 300));
 	});
 	page.on("response", (r) => {
@@ -94,6 +101,76 @@ async function visitClean(page: Page, w: Watch, url: string, label: string): Pro
 			html.slice(Math.max(0, html.search(PHP_ERROR) - 20), html.search(PHP_ERROR) + 200),
 	);
 	return html;
+}
+
+/** Dismiss 18.5's guides (welcome, "Edit your site", styles) and plain modals. */
+async function dismissModals(page: Page): Promise<void> {
+	for (let i = 0; i < 4; i++) {
+		const finish = page.locator(".components-guide__finish-button");
+		const close = page.locator(
+			".components-modal__screen-overlay .components-modal__header button",
+		);
+		if (await finish.count()) await finish.first().click();
+		else if (await close.count()) await close.first().click();
+		else return;
+		await page.waitForTimeout(400);
+	}
+}
+
+/** The site editor's layout has mounted and its canvas (when the view has one) holds blocks. */
+async function waitForSiteEditor(page: Page, canvas: boolean): Promise<void> {
+	await page.waitForSelector(".edit-site-layout", { timeout: 60_000 });
+	if (canvas) {
+		await page.waitForSelector('iframe[name="editor-canvas"]', { timeout: 60_000 });
+		await page.waitForFunction(
+			() =>
+				((
+					globalThis as {
+						wp?: { data: { select: (s: string) => { getBlockCount: () => number } } };
+					}
+				).wp?.data
+					.select("core/block-editor")
+					.getBlockCount() ?? 0) > 0,
+			undefined,
+			{ timeout: 60_000 },
+		);
+	}
+	await page.waitForTimeout(2000);
+	await dismissModals(page);
+}
+
+interface SiteEditorState {
+	search: string;
+	title: string;
+	screen: string | null;
+	canvas: boolean;
+	canvasText: string;
+}
+
+/** The URL the 18.5 router ended up on, and what it rendered. */
+async function siteEditorState(page: Page): Promise<SiteEditorState> {
+	return page.evaluate(() => ({
+		search: decodeURIComponent(location.search),
+		title: document.title,
+		screen:
+			document.querySelector(".edit-site-sidebar-navigation-screen__title")?.textContent?.trim() ??
+			null,
+		canvas: document.querySelector('iframe[name="editor-canvas"]') !== null,
+		canvasText:
+			(
+				document.querySelector('iframe[name="editor-canvas"]') as HTMLIFrameElement | null
+			)?.contentDocument?.body?.innerText.slice(0, 3000) ?? "",
+	}));
+}
+
+/** Click Save in the site editor header, confirm the entities panel, wait for the request. */
+async function saveSiteEditor(page: Page): Promise<void> {
+	await page.locator("button.editor-post-publish-button__button").first().click();
+	await page.waitForTimeout(1200);
+	// 18.5 prefixes the panel's classes with `editor-`; a lone entity saves without it.
+	const confirm = page.locator(".editor-entities-saved-states__save-button");
+	if (await confirm.count()) await confirm.first().click();
+	await page.waitForTimeout(5000);
 }
 
 async function waitForEditor(page: Page): Promise<void> {
@@ -356,15 +433,331 @@ try {
 	);
 	t.check(
 		"the client fetched theme and core query patterns, but no 7.x overlays",
-		patternNames.some((n) => n.startsWith("twentytwentyone/")) &&
+		patternNames.some((n) => n.startsWith(`${THEME}/`)) &&
 			patternNames.includes("core/query-standard-posts") &&
 			!patternNames.some((n) => n.startsWith("core/navigation-overlay")),
 		patternNames.filter((n) => n.startsWith("core/")).join(","),
 	);
 
+	// ---- the Site Editor: 18.5's edit-site on 7.x's site-editor.php ------
+	// Every link core emits (`?p=/…`) must land on the 18.5 view it names.
+	const siteEditorUrls: [string, string, (s: SiteEditorState) => boolean][] = [
+		["site-editor.php", "home", (s) => s.screen === "Design"],
+		[
+			"site-editor.php?p=%2Ftemplate",
+			"templates",
+			(s) => s.screen === "Templates" && s.search.includes("postType=wp_template"),
+		],
+		[
+			"site-editor.php?p=%2Fpattern",
+			"patterns",
+			(s) => s.screen === "Patterns" && s.search.includes("postType=wp_block"),
+		],
+		[
+			"site-editor.php?p=%2Fstyles",
+			"styles",
+			(s) => s.screen === "Styles" && s.search.includes("path=/wp_global_styles"),
+		],
+		[
+			"site-editor.php?p=%2Fnavigation",
+			"navigation",
+			(s) => s.screen === "Navigation" && s.search.includes("postType=wp_navigation"),
+		],
+		[
+			"site-editor.php?p=%2Fpage",
+			"pages",
+			(s) => s.screen === "Pages" && s.search.includes("postType=page"),
+		],
+		[
+			`site-editor.php?p=%2Fwp_template_part%2F${encodeURIComponent(`${THEME}//header`)}&canvas=edit`,
+			"template part canvas",
+			(s) => s.canvas && s.search.includes("postType=wp_template_part") && /Header/.test(s.title),
+		],
+		[
+			"site-editor.php?p=%2Fpage%2F2&canvas=edit",
+			"page canvas",
+			(s) => s.canvas && s.search.includes("postId=2") && s.canvasText.includes("Sample Page"),
+		],
+		// The 18.5 form itself (what the front-end admin bar and the router emit);
+		// core 302s it to `?p=` and the shim brings it back.
+		[
+			`site-editor.php?postType=wp_template&postId=${encodeURIComponent(`${THEME}//index`)}&canvas=edit`,
+			"reloaded 18.5 URL",
+			(s) => s.canvas && s.search.includes(`postId=${THEME}//index`) && /Index/.test(s.title),
+		],
+	];
+	for (const [path, label, ok] of siteEditorUrls) {
+		await visitClean(page, w, `${url}/wp-admin/${path}`, `site editor (${label})`);
+		await waitForSiteEditor(page, label.includes("canvas") || label.includes("reloaded"));
+		const state = await siteEditorState(page);
+		t.check(
+			`site editor: ${label} is the 18.5 view core's URL names`,
+			ok(state),
+			JSON.stringify(state),
+		);
+	}
+	const siteFacts = await page.evaluate(() => ({
+		editSiteSrc:
+			(document.getElementById("wp-edit-site-js") as HTMLScriptElement | null)?.src ?? "",
+		react: (globalThis as unknown as { React: { version: string } }).React.version,
+	}));
+	t.check(
+		"wp-edit-site is served from the plugin",
+		siteFacts.editSiteSrc.includes(`/plugins/${PLUGIN_SLUG}/assets/gutenberg/build/edit-site/`),
+		siteFacts.editSiteSrc,
+	);
+	t.check("the site editor runs on React 18.3.1", siteFacts.react === "18.3.1", siteFacts.react);
+
+	// Navigate in-app, then reload: the router's own URL survives core's redirect.
+	await page
+		.locator(".edit-site-site-hub, .edit-site-layout__hub")
+		.first()
+		.waitFor({ timeout: 10_000 })
+		.catch(() => undefined);
+	await visitClean(page, w, `${url}/wp-admin/site-editor.php`, "site editor (hub)");
+	await waitForSiteEditor(page, false);
+	await page
+		.locator(".edit-site-sidebar-navigation-item", { hasText: "Templates" })
+		.first()
+		.click();
+	await page.waitForTimeout(2500);
+	t.check(
+		"clicking Templates moves the URL to the 18.5 form",
+		(await siteEditorState(page)).search.includes("postType=wp_template"),
+	);
+	await page.reload({ waitUntil: "load" });
+	await waitForSiteEditor(page, false);
+	const afterReload = await siteEditorState(page);
+	t.check(
+		"reloading lands back on Templates",
+		afterReload.screen === "Templates" && afterReload.search.includes("postType=wp_template"),
+		JSON.stringify(afterReload),
+	);
+
+	// Edit the home template, save, and confirm both the database and the front end.
+	await visitClean(
+		page,
+		w,
+		`${url}/wp-admin/site-editor.php?p=%2Fwp_template%2F${encodeURIComponent(`${THEME}//home`)}&canvas=edit`,
+		"site editor (home template canvas)",
+	);
+	await waitForSiteEditor(page, true);
+	await page
+		.waitForFunction(
+			() =>
+				(
+					(document.querySelector('iframe[name="editor-canvas"]') as HTMLIFrameElement | null)
+						?.contentDocument?.body?.innerText ?? ""
+				).includes("Sample Page"),
+			undefined,
+			{ timeout: 30_000 },
+		)
+		.catch(() => undefined);
+	t.check(
+		"the header's navigation block resolved its fallback menu in the canvas",
+		(await siteEditorState(page)).canvasText.includes("Sample Page"),
+	);
+	const marker = `downgrade-fse-${Date.now()}`;
+	const dirty = await page.evaluate(async (text) => {
+		const g = globalThis as unknown as {
+			wp: {
+				blocks: { createBlock: (n: string, a: Record<string, unknown>) => unknown };
+				data: {
+					dispatch: (s: string) => { insertBlock: (b: unknown, i: number) => void };
+					select: (s: string) => {
+						__experimentalGetDirtyEntityRecords: () => {
+							kind: string;
+							name: string;
+							key: string;
+						}[];
+					};
+				};
+			};
+		};
+		g.wp.data
+			.dispatch("core/block-editor")
+			.insertBlock(g.wp.blocks.createBlock("core/paragraph", { content: text }), 0);
+		await new Promise((r) => setTimeout(r, 500));
+		return g.wp.data
+			.select("core")
+			.__experimentalGetDirtyEntityRecords()
+			.map((e) => `${e.kind}/${e.name}/${e.key}`);
+	}, marker);
+	t.check(
+		"inserting a block dirties the wp_template entity",
+		dirty.some((d) => d.startsWith("postType/wp_template/")),
+		dirty.join(","),
+	);
+	await saveSiteEditor(page);
+	t.check(
+		"saving the template raised no page errors",
+		w.pageErrors.length === 0,
+		w.pageErrors.slice(0, 3).join(" | "),
+	);
+	const savedTemplate = await phpJson<{ found: boolean; hasMarker: boolean }>(
+		server,
+		`$posts = get_posts(['post_type' => 'wp_template', 'post_status' => 'any', 'numberposts' => -1, 'tax_query' => [['taxonomy' => 'wp_theme', 'field' => 'name', 'terms' => get_stylesheet()]]]);
+		$home = array_values(array_filter($posts, fn($p) => $p->post_name === 'home'));
+		return ['found' => $home !== [], 'hasMarker' => $home !== [] && str_contains($home[0]->post_content, ${JSON.stringify(marker)})];`,
+	);
+	t.check(
+		"the home template was saved as a wp_template post with the new block",
+		savedTemplate.value.found && savedTemplate.value.hasMarker,
+		JSON.stringify(savedTemplate.value),
+	);
+	await visitClean(page, w, `${url}/`, "front end (block theme)");
+	const frontTemplate = await page.evaluate(
+		(m) => ({
+			marker: document.body.innerText.includes(m),
+			pluginAssets: [...document.querySelectorAll("script[src], link[href]")].filter((el) =>
+				(el.getAttribute("src") ?? el.getAttribute("href") ?? "").includes(
+					"/plugins/gutenberg-downgrade/",
+				),
+			).length,
+		}),
+		marker,
+	);
+	t.check("the front end renders the saved template change", frontTemplate.marker);
+	t.check(
+		"the block theme front end loads nothing from the plugin",
+		frontTemplate.pluginAssets === 0,
+		String(frontTemplate.pluginAssets),
+	);
+
+	// Global styles: edit through core-data (what the Styles panel dispatches), save, verify.
+	await visitClean(
+		page,
+		w,
+		`${url}/wp-admin/site-editor.php?p=%2Fstyles&canvas=edit`,
+		"site editor (styles canvas)",
+	);
+	await waitForSiteEditor(page, true);
+	const gsDirty = await page.evaluate(async () => {
+		const g = globalThis as unknown as {
+			wp: {
+				data: {
+					select: (s: string) => {
+						__experimentalGetCurrentGlobalStylesId: () => number;
+						getEditedEntityRecord: (
+							k: string,
+							n: string,
+							id: number,
+						) => { styles?: Record<string, unknown> };
+						__experimentalGetDirtyEntityRecords: () => { kind: string; name: string }[];
+					};
+					dispatch: (s: string) => {
+						editEntityRecord: (
+							k: string,
+							n: string,
+							id: number,
+							e: Record<string, unknown>,
+						) => void;
+					};
+				};
+			};
+		};
+		const id = g.wp.data.select("core").__experimentalGetCurrentGlobalStylesId();
+		const styles =
+			g.wp.data.select("core").getEditedEntityRecord("root", "globalStyles", id).styles ?? {};
+		g.wp.data.dispatch("core").editEntityRecord("root", "globalStyles", id, {
+			styles: {
+				...styles,
+				color: {
+					...(styles["color"] as Record<string, unknown> | undefined),
+					background: "#123456",
+				},
+			},
+		});
+		await new Promise((r) => setTimeout(r, 500));
+		return g.wp.data
+			.select("core")
+			.__experimentalGetDirtyEntityRecords()
+			.map((e) => `${e.kind}/${e.name}`);
+	});
+	t.check(
+		"editing global styles dirties the globalStyles entity",
+		gsDirty.includes("root/globalStyles"),
+		gsDirty.join(","),
+	);
+	await saveSiteEditor(page);
+	const savedStyles = await phpJson<{ bg: string | null }>(
+		server,
+		`$data = json_decode((string) get_post(WP_Theme_JSON_Resolver::get_user_global_styles_post_id())?->post_content, true);
+		return ['bg' => $data['styles']['color']['background'] ?? null];`,
+	);
+	t.check(
+		"global styles persisted",
+		savedStyles.value.bg === "#123456",
+		JSON.stringify(savedStyles.value),
+	);
+
+	// Patterns: create one the way 18.5's dialog does, then open it through core's 7.x link.
+	await visitClean(
+		page,
+		w,
+		`${url}/wp-admin/site-editor.php?p=%2Fpattern`,
+		"site editor (patterns)",
+	);
+	await waitForSiteEditor(page, false);
+	const pattern = await page.evaluate(async () => {
+		const g = globalThis as unknown as {
+			wp: {
+				data: {
+					dispatch: (s: string) => {
+						saveEntityRecord: (
+							k: string,
+							n: string,
+							r: Record<string, unknown>,
+						) => Promise<{ id?: number } | undefined>;
+					};
+				};
+			};
+		};
+		const record = await g.wp.data.dispatch("core").saveEntityRecord("postType", "wp_block", {
+			title: "Downgrade pattern",
+			content: "<!-- wp:paragraph --><p>pattern body</p><!-- /wp:paragraph -->",
+			status: "publish",
+			meta: { wp_pattern_sync_status: "unsynced" },
+		});
+		return record?.id ?? 0;
+	});
+	t.check("an unsynced pattern can be created (18.5's payload)", pattern > 0, String(pattern));
+	await visitClean(
+		page,
+		w,
+		`${url}/wp-admin/site-editor.php?p=%2Fwp_block%2F${pattern}&canvas=edit`,
+		"site editor (pattern canvas)",
+	);
+	await waitForSiteEditor(page, true);
+	const patternState = await siteEditorState(page);
+	t.check(
+		"the pattern opens in the canvas through its 7.x edit link",
+		patternState.canvas &&
+			patternState.search.includes("postType=wp_block") &&
+			patternState.canvasText.includes("pattern body"),
+		JSON.stringify(patternState),
+	);
+
 	// ---- other package-driven admin screens --------------------------------
 	await visitClean(page, w, `${url}/wp-admin/edit.php?post_type=wp_block`, "reusable blocks list");
 	await visitClean(page, w, `${url}/wp-admin/upload.php`, "media library");
+
+	// ---- the screens only a classic theme has ------------------------------
+	await switchTheme(server, CLASSIC_THEME);
+	await visitClean(
+		page,
+		w,
+		`${url}/wp-admin/site-editor.php`,
+		"site-editor.php on a classic theme",
+	);
+	await waitForSiteEditor(page, false);
+	const classicSiteEditor = await siteEditorState(page);
+	t.check(
+		"a classic theme is sent to the patterns view, as 6.6 did",
+		classicSiteEditor.screen === "Patterns" &&
+			classicSiteEditor.search.includes("postType=wp_block"),
+		JSON.stringify(classicSiteEditor),
+	);
 	await visitClean(page, w, `${url}/wp-admin/widgets.php`, "widgets.php");
 	t.check(
 		"the block widgets editor mounted",

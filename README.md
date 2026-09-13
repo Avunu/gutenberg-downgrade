@@ -13,15 +13,15 @@ On wp-admin screens, REST requests and admin-ajax it:
 - **repoints every `wp-*` package script** core registered at the vendored 18.5 bundles, keeping core's inline scripts (API root and nonce, date settings, editor fusion) intact, and serves the **React 18.3.1** build those bundles were compiled against;
 - **re-registers the package stylesheets** (`wp-edit-post`, `wp-components`, `wp-block-library`, …) with the 18.5 dependency graph;
 - **re-registers the core blocks server-side from the 18.5 `block.json`** files, so the editor receives the block definitions its client was built for rather than core's newer attributes, supports and selectors. Dynamic blocks run their 18.5 render callbacks where the audit found them clean, and core's where it did not (`config/blocks.php` records every decision and why);
-- **switches off** the parts of core that assume its own editor (the admin-wide command palette, script modules, client-side media processing, the pattern directory, and the bundled patterns that use blocks 18.5 does not have).
+- **switches off** the parts of core that assume its own editor (the admin-wide command palette, script modules, client-side media processing, the pattern directory, and the bundled patterns that use blocks 18.5 does not have);
+- **bridges the Site Editor**: core's `site-editor.php` still boots through `wp.editSite.initializeEditor()`, so the 18.5 `edit-site` bundle runs the whole screen — templates, template parts, patterns, styles, navigation, pages. A shim translates the URL scheme WordPress 6.8 introduced (`?p=/template`, `?p=/wp_template/…&canvas=edit`, and the 302 core issues for the older form) into the `postType`/`postId` query the 18.5 router reads, so every link core emits and every bookmark keeps working. Classic themes get what 6.6 gave them here: the patterns view (and template parts when the theme opts in).
 
-The public front end, cron and WP-CLI are untouched: they keep WordPress core's block library, CSS and view scripts. The Site Editor, Font Library and Connectors screens are excluded (they need the modern package stack).
+The public front end, cron and WP-CLI are untouched: they keep WordPress core's block library, CSS and view scripts. The Font Library and Connectors screens (7.x-only, built on packages 18.5 never had) are excluded.
 
 ## Requirements
 
 - WordPress 7.1+
 - PHP 8.3+
-- A classic theme is the intended setup. Block themes load, but the Site Editor keeps core's own editor (a notice on the Plugins screen says so).
 - The Gutenberg plugin must not be active (this plugin stands down if it is).
 
 ## Installation
@@ -39,8 +39,8 @@ Optional constants in `wp-config.php`:
 define('GUTENBERG_DOWNGRADE_DISABLE', true);
 
 // Replace the wp-admin screens ($pagenow values) that keep core's editor stack.
-// Default: site-editor.php, font-library.php, options-connectors.php
-define('GUTENBERG_DOWNGRADE_BYPASS_PAGES', ['site-editor.php', 'font-library.php']);
+// Default: font-library.php, options-connectors.php
+define('GUTENBERG_DOWNGRADE_BYPASS_PAGES', ['font-library.php']);
 ```
 
 Filters: `gutenberg_downgrade_active` (bool), `gutenberg_downgrade_bypass_pages` (array), `gutenberg_downgrade_editor_settings` (the final editor settings).
@@ -48,7 +48,6 @@ Filters: `gutenberg_downgrade_active` (bool), `gutenberg_downgrade_bypass_pages`
 ## Known limitations
 
 - **Content authored with a newer editor.** Posts saved by WordPress 6.7+/7.x that use blocks or markup 18.5 never had (the 7.x navigation overlays, for instance) open with "This block contains unexpected or invalid content" in the 18.5 editor. This is inherent to running an older editor; the plugin targets sites that stay on it.
-- **Block themes.** The Site Editor keeps core's stack (bypassed screen), but REST requests it makes still see the 18.5 block definitions.
 - **Translations.** The bundles are served from the plugin, so core's language packs do not match them by path. The plugin points them at the file core would have used for the same package; strings that changed since 18.5 stay untranslated.
 - **Third-party editor scripts built for current core** that use package exports added after Gutenberg 18.5 will not work while the downgrade is active. Scripts built for the WordPress 6.1–6.6 packages are the target. `assets/js/block-editor-compat.js` backports the ones whose absence breaks more than the calling plugin — a missing export reached from an `editor.BlockEdit` filter crashes _every_ block in the post, not just that plugin's panel (Secure Custom Fields and `useBlockBindingsUtils` are the case this exists for).
 
@@ -71,12 +70,12 @@ nix build .#zip                        # result/gutenberg-downgrade.zip
 nix flake check                        # phpstan, phpcs, unit, block-audit, manifest, plugin-header
 ```
 
-The runtime tests boot WordPress in [Playground](https://wordpress.github.io/wordpress-playground/) (WebAssembly PHP, no services) with the built plugin mounted and a classic theme active:
+The runtime tests boot WordPress in [Playground](https://wordpress.github.io/wordpress-playground/) (WebAssembly PHP, no services) with the built plugin mounted and a block theme active (a classic theme is switched in for the widgets and customizer passes):
 
 ```sh
 nix build .#default                    # the harness mounts result/
 npm run test:e2e                       # PHP-level assertions: handles, registry, settings, every dynamic block renders
-CHROME_PATH=$(command -v google-chrome-stable) npm run test:browser   # headless Chrome: no console errors, editor round trip
+CHROME_PATH=$(command -v google-chrome-stable) npm run test:browser   # headless Chrome: site editor + post editor round trips, no console errors
 WP_VERSION=7.1 npm run test            # or latest (default), nightly
 ```
 
