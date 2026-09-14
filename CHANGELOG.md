@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.0](https://github.com/Avunu/gutenberg-downgrade/compare/v1.0.1...v1.1.0) (2026-09-13)
+
+
+### Features
+
+* full site editor support ([b3ffd28](https://github.com/Avunu/gutenberg-downgrade/commit/b3ffd28df1a9aeae3def11ab600cbb669837ddbc))
+
 ## [1.0.1](https://github.com/Avunu/gutenberg-downgrade/compare/v1.0.0...v1.0.1) (2026-09-12)
 
 
