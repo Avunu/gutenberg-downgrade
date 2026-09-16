@@ -188,12 +188,18 @@ async function waitForEditor(page: Page): Promise<void> {
 	);
 	await page.waitForSelector(".edit-post-visual-editor", { timeout: 60_000 });
 	// The welcome guide overlays the canvas on a fresh user; it would swallow
-	// every click below.
-	const close = page.locator(".components-modal__screen-overlay .components-modal__header button");
-	if (await close.count()) {
-		await close.first().click();
-		await page.waitForSelector(".components-modal__screen-overlay", { state: "detached" });
+	// every click below. One click is not always enough: it can land before
+	// React has wired the button, and a second guide can follow the first, so
+	// retry until the overlay is gone rather than wait once on a single click.
+	const overlay = page.locator(".components-modal__screen-overlay");
+	for (let attempt = 0; attempt < 5 && (await overlay.count()); attempt++) {
+		await dismissModals(page);
+		await overlay
+			.first()
+			.waitFor({ state: "detached", timeout: 5_000 })
+			.catch(() => {});
 	}
+	await page.waitForSelector(".components-modal__screen-overlay", { state: "detached" });
 }
 
 let server;

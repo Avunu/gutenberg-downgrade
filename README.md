@@ -85,7 +85,7 @@ WP_VERSION=7.1 npm run test            # or latest (default), nightly
 
 ## Releasing
 
-Conventional Commits on `main` feed [Release Please](https://github.com/googleapis/release-please). Merging its release PR bumps `composer.json`, the plugin header and `CHANGELOG.md`, tags the release, runs the full test suite against the tag and attaches the Nix-built zip — the asset installed sites update from.
+Conventional Commits on `main` feed [Release Please](https://github.com/googleapis/release-please). Merging its release PR bumps `composer.json`, the plugin header and `CHANGELOG.md` and creates a draft release; the full test suite then runs against that commit and, only if it passes, the Nix-built zip is attached and the release published (which creates the tag). The zip is the asset installed sites update from — the update checker requires it, so a draft, or a release without one, is never offered.
 
 ## License
 

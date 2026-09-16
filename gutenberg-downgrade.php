@@ -66,7 +66,17 @@ $gutenbergDowngradeUpdateChecker = \YahnisElsts\PluginUpdateChecker\v5\PucFactor
     __FILE__,
     'gutenberg-downgrade'
 );
-// Download the built release asset, not GitHub's source tarball (which lacks vendor/ and assets/gutenberg/).
-$gutenbergDowngradeUpdateChecker->getVcsApi()->enableReleaseAssets('/gutenberg-downgrade\.zip$/');
+// Download the built release asset, never GitHub's source tarball (which lacks
+// vendor/ and assets/gutenberg/). REQUIRE, not the default PREFER: a release
+// that has no zip yet — the suite failed after Release Please tagged it — must
+// offer no update at all rather than fall back to the tarball and leave the
+// site with a plugin that cannot load.
+// The constant is read off the instance: Vcs\Api only exists under the
+// version-suffixed (v5pX) namespace, which moves on every minor release.
+$gutenbergDowngradeVcsApi = $gutenbergDowngradeUpdateChecker->getVcsApi();
+$gutenbergDowngradeVcsApi->enableReleaseAssets(
+    '/gutenberg-downgrade\.zip$/',
+    $gutenbergDowngradeVcsApi::REQUIRE_RELEASE_ASSETS
+);
 
 add_action('plugins_loaded', [\GutenbergDowngrade\Plugin::class, 'init']);
