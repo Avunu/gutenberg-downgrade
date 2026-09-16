@@ -20,6 +20,21 @@
 
 	const STORE = "core/block-editor";
 
+	// `LinkControl` is the name WordPress 6.8 (Gutenberg #56384) stabilised
+	// `__experimentalLinkControl` under: the same component, with the same
+	// `DEFAULT_LINK_SETTINGS` and `ViewerFill` statics, and the experimental
+	// name kept as a deprecated wrapper. 18.5 only has the experimental name.
+	//
+	// Plugins built for 6.8+ read the stable one, and read its statics at
+	// script evaluation time — Rank Math's `gutenberg-formats.js` spreads
+	// `LinkControl.DEFAULT_LINK_SETTINGS` at top level, so without the alias
+	// its whole bundle dies with an uncaught TypeError before it registers
+	// anything. Aliasing costs nothing, so it is done although the failure is
+	// confined to that plugin's own link settings.
+	if (blockEditor.LinkControl === undefined && blockEditor.__experimentalLinkControl) {
+		blockEditor.LinkControl = blockEditor.__experimentalLinkControl;
+	}
+
 	// `useBlockBindingsUtils()` is the public hook WordPress 6.7 added for
 	// editing a block's `metadata.bindings`. 18.5 already stores and resolves
 	// those bindings — only the hook that writes them is missing.
