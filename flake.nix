@@ -319,6 +319,25 @@
           cd ./work
           cp -rL ${vendor}/vendor ./vendor
           chmod -R u+w ./vendor
+          # composition-c4 installs every package from a path repository into
+          # the store, and installed.json records them as `"dist": {"type":
+          # "path"}`. PHPStan >= 2.2.13 reads a path package as project code
+          # edited in place and tracks its files one by one instead of by
+          # package (phpstan-src#6356); after the analysis its main process then
+          # parses and reflects each of those files to record their exported
+          # nodes for the result cache — the 6 MB WordPress stubs included, at
+          # over 2 GB, past the memory limit. The copy above is a plain install,
+          # not a path one, so drop the claim.
+          php -r '
+            $file = "vendor/composer/installed.json";
+            $installed = json_decode(file_get_contents($file), true, 512, JSON_THROW_ON_ERROR);
+            foreach ($installed["packages"] as &$package) {
+              if (($package["dist"]["type"] ?? null) === "path") {
+                unset($package["dist"]);
+              }
+            }
+            file_put_contents($file, json_encode($installed, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+          '
           cp -r ${gutenbergAssets} ./assets/gutenberg
           chmod -R u+w ./assets/gutenberg
           ln -s ${testTools}/vendor tests/tools/vendor
