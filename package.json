@@ -1,6 +1,6 @@
 {
 	"name": "gutenberg-downgrade",
-	"version": "1.1.0",
+	"version": "1.1.1",
 	"private": true,
 	"description": "Type-checking and lint tooling for the gutenberg-downgrade browser shim and the wp-playground test harness. No build step — the shipped JS in assets/js is plain, type-checked JavaScript.",
 	"license": "GPL-2.0-or-later",

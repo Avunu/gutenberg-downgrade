@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.1.1](https://github.com/Avunu/gutenberg-downgrade/compare/v1.1.0...v1.1.1) (2026-09-16)
+
+
+### Bug Fixes
+
+* composition-c4 PHPStan &gt;= 2.2.13 RAM consumption ([293b380](https://github.com/Avunu/gutenberg-downgrade/commit/293b380e9c3ebf9a25afdb84f106e761ca14db48))
+* rankmath conflict ([7a29574](https://github.com/Avunu/gutenberg-downgrade/commit/7a29574ad436db0fd6695c31a9da51ef43734252))
+
+
+### Miscellaneous Chores
+
+* allow for debug files ([4ddebeb](https://github.com/Avunu/gutenberg-downgrade/commit/4ddebeb82c35d1ebc2b52fda7da2bb2c4dc06886))
+* bump @types/node in /tests/playground in the playground group ([#7](https://github.com/Avunu/gutenberg-downgrade/issues/7)) ([16ac795](https://github.com/Avunu/gutenberg-downgrade/commit/16ac795d8d1c6a6815075eda9ea8f7c63bd19de1))
+* update flake ([2906e18](https://github.com/Avunu/gutenberg-downgrade/commit/2906e186385ecf7d4ab6704100805467b4ca9e00))
+
 ## [1.1.0](https://github.com/Avunu/gutenberg-downgrade/compare/v1.0.1...v1.1.0) (2026-09-13)
 
 
