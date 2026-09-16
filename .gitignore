@@ -17,4 +17,4 @@ assets/gutenberg
 .phpunit.result.cache
 tests/audit/.phpstan-cache
 
-cwicly
+debug
