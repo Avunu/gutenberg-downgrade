@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.2](https://github.com/Avunu/gutenberg-downgrade/compare/v1.1.1...v1.1.2) (2026-09-16)
+
+
+### Bug Fixes
+
+* ensure that auto-updater downloads the build release ([4af01f1](https://github.com/Avunu/gutenberg-downgrade/commit/4af01f1fb1da9cb7c0bc503e0b35d93905bd99b0))
+
 ## [1.1.1](https://github.com/Avunu/gutenberg-downgrade/compare/v1.1.0...v1.1.1) (2026-09-16)
 
 
