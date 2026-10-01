@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.1.3](https://github.com/Avunu/gutenberg-downgrade/compare/v1.1.2...v1.1.3) (2026-10-01)
+
+
+### Miscellaneous Chores
+
+* bump @types/node in /tests/playground in the playground group ([#14](https://github.com/Avunu/gutenberg-downgrade/issues/14)) ([31b4b22](https://github.com/Avunu/gutenberg-downgrade/commit/31b4b22c1557b18d21cfc89e47568abf82ab938e))
+* bump @types/node in /tests/playground in the playground group ([#15](https://github.com/Avunu/gutenberg-downgrade/issues/15)) ([ea97ef3](https://github.com/Avunu/gutenberg-downgrade/commit/ea97ef3da540487e73fdb5188c0c88bdda4a05fa))
+* bump @types/node in /tests/playground in the playground group ([#19](https://github.com/Avunu/gutenberg-downgrade/issues/19)) ([2529404](https://github.com/Avunu/gutenberg-downgrade/commit/25294042212b3aa9b15873cc7bf92b97f7149198))
+* bump @wp-playground/cli ([264a524](https://github.com/Avunu/gutenberg-downgrade/commit/264a52467236155299b5eb1eddd092f0f73334ab))
+* bump @wp-playground/cli ([#16](https://github.com/Avunu/gutenberg-downgrade/issues/16)) ([5ce2e20](https://github.com/Avunu/gutenberg-downgrade/commit/5ce2e20e2fcfa2dae6f206e7bd8a8f4ff09bdd40))
+* bump @wp-playground/cli from 3.1.55 to 3.1.56 in /tests/playground in the playground group ([0d9d799](https://github.com/Avunu/gutenberg-downgrade/commit/0d9d7998cbb124fbbca0f4d7c159b3f3e876af88))
+* bump the nix group with 2 updates ([#18](https://github.com/Avunu/gutenberg-downgrade/issues/18)) ([b2d15ad](https://github.com/Avunu/gutenberg-downgrade/commit/b2d15ad2568dddaa48b39d307956bd9fae5802d7))
+* bump the npm group across 1 directory with 2 updates ([#17](https://github.com/Avunu/gutenberg-downgrade/issues/17)) ([9684993](https://github.com/Avunu/gutenberg-downgrade/commit/9684993145af2b0d801bb2b40b573676e07a7aa5))
+* bump the npm group with 2 updates ([#20](https://github.com/Avunu/gutenberg-downgrade/issues/20)) ([8ce76cf](https://github.com/Avunu/gutenberg-downgrade/commit/8ce76cf7bc47e77b31cd3f33ada843e3f18083cb))
+
 ## [1.1.2](https://github.com/Avunu/gutenberg-downgrade/compare/v1.1.1...v1.1.2) (2026-09-16)
 
 
