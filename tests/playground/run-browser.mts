@@ -207,7 +207,13 @@ let browser;
 try {
 	server = await bootPlayground({ port: 9430 });
 	const url = server.serverUrl;
-	browser = await chromium.launch({ executablePath: chromePath(), headless: true });
+	// No zygote: the zygote's capset() call is blocked by the CI runner's seccomp
+	// filter, and the renderer then crashes ("Target crashed").
+	browser = await chromium.launch({
+		executablePath: chromePath(),
+		headless: true,
+		args: ["--no-sandbox", "--no-zygote"],
+	});
 	const page = await browser.newPage({ viewport: { width: 1400, height: 1000 } });
 	const w = watch(page);
 
