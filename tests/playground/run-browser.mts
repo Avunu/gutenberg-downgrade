@@ -170,7 +170,29 @@ async function saveSiteEditor(page: Page): Promise<void> {
 	// 18.5 prefixes the panel's classes with `editor-`; a lone entity saves without it.
 	const confirm = page.locator(".editor-entities-saved-states__save-button");
 	if (await confirm.count()) await confirm.first().click();
-	await page.waitForTimeout(5000);
+	// Wait for the save to land (nothing left dirty) rather than a fixed delay: a busy
+	// CI host can take well over five seconds.
+	await page
+		.waitForFunction(
+			() => {
+				const wp = (
+					globalThis as {
+						wp?: {
+							data?: {
+								select: (s: string) => {
+									__experimentalGetDirtyEntityRecords?: () => unknown[];
+								};
+							};
+						};
+					}
+				).wp;
+				return wp?.data?.select("core")?.__experimentalGetDirtyEntityRecords?.().length === 0;
+			},
+			undefined,
+			{ timeout: 60_000, polling: 500 },
+		)
+		.catch(() => undefined);
+	await page.waitForTimeout(1000);
 }
 
 async function waitForEditor(page: Page): Promise<void> {
@@ -565,7 +587,7 @@ try {
 						?.contentDocument?.body?.innerText ?? ""
 				).includes("Sample Page"),
 			undefined,
-			{ timeout: 30_000 },
+			{ timeout: 60_000 },
 		)
 		.catch(() => undefined);
 	t.check(
