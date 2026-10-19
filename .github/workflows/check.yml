@@ -84,7 +84,8 @@ jobs:
 
   playground:
     name: playground / WordPress ${{ matrix.wp }} / PHP ${{ matrix.php }}
-    runs-on: ${{ github.event.pull_request.head.repo.fork && 'ubuntu-latest' || fromJSON('["self-hosted","nixos"]') }}
+    # Hosted: four PHP-wasm Playgrounds plus Chromium overload the single self-hosted box (boots took minutes, pages timed out).
+    runs-on: ubuntu-latest
     # A continue-on-error job still reports success to downstream `needs`, so a
     # broken WordPress trunk can never block.
     continue-on-error: ${{ matrix.wp == 'nightly' }}
