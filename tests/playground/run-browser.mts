@@ -215,6 +215,9 @@ try {
 		args: ["--no-sandbox", "--no-zygote"],
 	});
 	const page = await browser.newPage({ viewport: { width: 1400, height: 1000 } });
+	// Playground answers slowly on a busy CI host; give every navigation (login,
+	// reloads) the same headroom visitClean already uses.
+	page.setDefaultNavigationTimeout(90_000);
 	const w = watch(page);
 
 	await login(page, url);
