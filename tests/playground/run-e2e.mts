@@ -58,7 +58,7 @@ const is185 = (b: { attributes: Record<string, unknown> } | null | undefined): b
 
 let server;
 try {
-	server = await bootPlayground({ port: 9400 });
+	server = await bootPlayground();
 
 	// ---- environment -------------------------------------------------------
 	const env = await phpJson<Env>(

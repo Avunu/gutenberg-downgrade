@@ -227,7 +227,7 @@ async function waitForEditor(page: Page): Promise<void> {
 let server;
 let browser;
 try {
-	server = await bootPlayground({ port: 9430 });
+	server = await bootPlayground();
 	const url = server.serverUrl;
 	// No zygote: the zygote's capset() call is blocked by the CI runner's seccomp
 	// filter, and the renderer then crashes ("Target crashed").
