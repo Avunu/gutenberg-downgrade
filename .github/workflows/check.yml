@@ -29,7 +29,7 @@ concurrency:
 
 jobs:
   types:
-    runs-on: ubuntu-latest
+    runs-on: ${{ github.event.pull_request.head.repo.fork && 'ubuntu-latest' || fromJSON('["self-hosted","nixos"]') }}
     steps:
       - uses: actions/checkout@v7
 
@@ -47,7 +47,7 @@ jobs:
 
   nix-checks:
     name: check / ${{ matrix.check }}
-    runs-on: ubuntu-latest
+    runs-on: ${{ github.event.pull_request.head.repo.fork && 'ubuntu-latest' || fromJSON('["self-hosted","nixos"]') }}
     strategy:
       fail-fast: false
       matrix:
@@ -63,11 +63,15 @@ jobs:
       - uses: actions/checkout@v7
 
       - uses: DeterminateSystems/nix-installer-action@main
+        if: runner.environment == 'github-hosted'
 
       # Evaluating the package set performs a full-history builtins.fetchGit
       # clone per Composer package (composition-c4 fetches with allRefs=true);
       # no binary cache covers ~/.cache/nix/gitv3.
       - name: Cache Nix git fetches
+        # The self-hosted runner keeps ~/.cache/nix between jobs; restoring a snapshot
+        # over that live fetcher-cache database corrupts it.
+        if: runner.environment == 'github-hosted'
         uses: actions/cache@v6
         with:
           path: |
@@ -80,6 +84,7 @@ jobs:
 
   playground:
     name: playground / WordPress ${{ matrix.wp }} / PHP ${{ matrix.php }}
+    # Hosted: four PHP-wasm Playgrounds plus Chromium overload the single self-hosted box (boots took minutes, pages timed out).
     runs-on: ubuntu-latest
     # A continue-on-error job still reports success to downstream `needs`, so a
     # broken WordPress trunk can never block.
@@ -100,8 +105,12 @@ jobs:
       - uses: actions/checkout@v7
 
       - uses: DeterminateSystems/nix-installer-action@main
+        if: runner.environment == 'github-hosted'
 
       - name: Cache Nix git fetches
+        # The self-hosted runner keeps ~/.cache/nix between jobs; restoring a snapshot
+        # over that live fetcher-cache database corrupts it.
+        if: runner.environment == 'github-hosted'
         uses: actions/cache@v6
         with:
           path: |
@@ -125,10 +134,15 @@ jobs:
       - name: PHP-level assertions
         run: npm --prefix tests/playground run test:e2e
 
+      # The downloaded Chrome cannot run on NixOS; the self-hosted runner uses nixpkgs' Chromium.
       - uses: browser-actions/setup-chrome@v2
+        if: runner.environment == 'github-hosted'
         id: setup-chrome
+      - id: nix-chrome
+        if: runner.environment != 'github-hosted'
+        run: echo "chrome-path=$(nix build --no-link --print-out-paths --inputs-from . nixpkgs#chromium)/bin/chromium" >> "$GITHUB_OUTPUT"
 
       - name: Headless browser pass
         run: npm --prefix tests/playground run test:browser
         env:
-          CHROME_PATH: ${{ steps.setup-chrome.outputs.chrome-path }}
+          CHROME_PATH: ${{ steps.setup-chrome.outputs.chrome-path || steps.nix-chrome.outputs.chrome-path }}

@@ -170,7 +170,29 @@ async function saveSiteEditor(page: Page): Promise<void> {
 	// 18.5 prefixes the panel's classes with `editor-`; a lone entity saves without it.
 	const confirm = page.locator(".editor-entities-saved-states__save-button");
 	if (await confirm.count()) await confirm.first().click();
-	await page.waitForTimeout(5000);
+	// Wait for the save to land (nothing left dirty) rather than a fixed delay: a busy
+	// CI host can take well over five seconds.
+	await page
+		.waitForFunction(
+			() => {
+				const wp = (
+					globalThis as {
+						wp?: {
+							data?: {
+								select: (s: string) => {
+									__experimentalGetDirtyEntityRecords?: () => unknown[];
+								};
+							};
+						};
+					}
+				).wp;
+				return wp?.data?.select("core")?.__experimentalGetDirtyEntityRecords?.().length === 0;
+			},
+			undefined,
+			{ timeout: 60_000, polling: 500 },
+		)
+		.catch(() => undefined);
+	await page.waitForTimeout(1000);
 }
 
 async function waitForEditor(page: Page): Promise<void> {
@@ -205,10 +227,21 @@ async function waitForEditor(page: Page): Promise<void> {
 let server;
 let browser;
 try {
-	server = await bootPlayground({ port: 9430 });
+	server = await bootPlayground();
 	const url = server.serverUrl;
-	browser = await chromium.launch({ executablePath: chromePath(), headless: true });
+	// No zygote: the zygote's capset() call is blocked by the CI runner's seccomp
+	// filter, and the renderer then crashes ("Target crashed").
+	browser = await chromium.launch({
+		executablePath: chromePath(),
+		headless: true,
+		args: ["--no-sandbox", "--no-zygote"],
+	});
 	const page = await browser.newPage({ viewport: { width: 1400, height: 1000 } });
+	// Playground answers slowly on a busy CI host; give every navigation (login,
+	// reloads) the same headroom visitClean already uses, and every action twice
+	// Playwright's 30-second default.
+	page.setDefaultNavigationTimeout(90_000);
+	page.setDefaultTimeout(60_000);
 	const w = watch(page);
 
 	await login(page, url);
@@ -556,7 +589,7 @@ try {
 						?.contentDocument?.body?.innerText ?? ""
 				).includes("Sample Page"),
 			undefined,
-			{ timeout: 30_000 },
+			{ timeout: 60_000 },
 		)
 		.catch(() => undefined);
 	t.check(

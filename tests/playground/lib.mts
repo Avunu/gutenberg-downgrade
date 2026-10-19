@@ -2,6 +2,7 @@
 // plugin mounted, run PHP against it, and locate a browser for the browser pass.
 import { runCLI, type RunCLIServer } from "@wp-playground/cli";
 import { existsSync, realpathSync } from "node:fs";
+import { createServer } from "node:net";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -48,18 +49,32 @@ export function pluginDir(): string {
 }
 
 /**
+ * A port nothing is listening on. Fixed ports collide when several CI jobs share one host, as they
+ * do on the self-hosted runner.
+ */
+async function freePort(): Promise<number> {
+	return new Promise((resolvePort, reject) => {
+		const probe = createServer();
+		probe.once("error", reject);
+		probe.listen(0, () => {
+			const address = probe.address();
+			const found = typeof address === "object" && address ? address.port : 0;
+			probe.close(() => resolvePort(found));
+		});
+	});
+}
+
+/**
  * Boot a playground server with the built plugin mounted and activated on the block theme (the
  * classic one installed but inactive), WP_DEBUG on and displayed so PHP notices from the vendored
  * 18.5 code surface in the page. Dispose with `await server[Symbol.asyncDispose]()`.
  */
-export async function bootPlayground({
-	port = 9400,
-}: { port?: number } = {}): Promise<RunCLIServer> {
+export async function bootPlayground({ port }: { port?: number } = {}): Promise<RunCLIServer> {
 	return runCLI({
 		command: "server",
 		php: PHP_VERSION,
 		wp: WP_VERSION,
-		port,
+		port: port ?? (await freePort()),
 		login: true,
 		quiet: true,
 		// Playground already defaults WP_DEBUG on; display it too so PHP notices
