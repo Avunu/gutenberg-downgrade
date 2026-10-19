@@ -238,8 +238,10 @@ try {
 	});
 	const page = await browser.newPage({ viewport: { width: 1400, height: 1000 } });
 	// Playground answers slowly on a busy CI host; give every navigation (login,
-	// reloads) the same headroom visitClean already uses.
+	// reloads) the same headroom visitClean already uses, and every action twice
+	// Playwright's 30-second default.
 	page.setDefaultNavigationTimeout(90_000);
+	page.setDefaultTimeout(60_000);
 	const w = watch(page);
 
 	await login(page, url);
