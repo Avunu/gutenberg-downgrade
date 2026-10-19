@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.1.4](https://github.com/Avunu/gutenberg-downgrade/compare/v1.1.3...v1.1.4) (2026-10-19)
+
+
+### Miscellaneous Chores
+
+* bump @wp-playground/cli ([#31](https://github.com/Avunu/gutenberg-downgrade/issues/31)) ([ba47910](https://github.com/Avunu/gutenberg-downgrade/commit/ba4791065edb93cd8dba3173bf75023995d926c4))
+* bump nixpkgs from `151fa4e` to `7fd4004` in the nix group ([#33](https://github.com/Avunu/gutenberg-downgrade/issues/33)) ([6747056](https://github.com/Avunu/gutenberg-downgrade/commit/6747056f7ef268713260a87f6a7b8d8b6dd71fc6))
+* bump playwright-core in /tests/playground in the playground group ([#35](https://github.com/Avunu/gutenberg-downgrade/issues/35)) ([b91a307](https://github.com/Avunu/gutenberg-downgrade/commit/b91a3070ee5c455ff896caf7eaf571f3071a0c61))
+* bump the npm group with 2 updates ([#32](https://github.com/Avunu/gutenberg-downgrade/issues/32)) ([a0acd21](https://github.com/Avunu/gutenberg-downgrade/commit/a0acd212be7ee03d9a655816cbb6d8fe58ded64b))
+* bump the playground group in /tests/playground with 2 updates ([#30](https://github.com/Avunu/gutenberg-downgrade/issues/30)) ([c7c3600](https://github.com/Avunu/gutenberg-downgrade/commit/c7c3600cc78803ae1397e49d52a2cf138c294ea6))
+
 ## [1.1.3](https://github.com/Avunu/gutenberg-downgrade/compare/v1.1.2...v1.1.3) (2026-10-09)
 
 
