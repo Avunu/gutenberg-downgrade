@@ -11,7 +11,7 @@
 	},
 	"devDependencies": {
 		"@types/node": "^26.6.6",
-		"@wp-playground/cli": "^3.1.62",
+		"@wp-playground/cli": "^3.1.63",
 		"playwright-core": "^1.65.0"
 	}
 }
