@@ -12,6 +12,8 @@ updates:
     directory: /
     schedule:
       interval: daily
+    cooldown:
+      default-days: 7
     commit-message:
       prefix: chore
     groups:
@@ -22,6 +24,8 @@ updates:
     directory: /
     schedule:
       interval: daily
+    cooldown:
+      default-days: 7
     commit-message:
       prefix: chore
     groups:
@@ -34,6 +38,8 @@ updates:
     directory: /tests/tools
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
     commit-message:
       prefix: chore
     groups:
@@ -44,6 +50,8 @@ updates:
     directory: /
     schedule:
       interval: daily
+    cooldown:
+      default-days: 7
     commit-message:
       prefix: chore
     groups:
@@ -55,6 +63,8 @@ updates:
     directory: /tests/playground
     schedule:
       interval: daily
+    cooldown:
+      default-days: 7
     commit-message:
       prefix: chore
     groups:
@@ -65,6 +75,8 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
     commit-message:
       prefix: chore
     groups:
