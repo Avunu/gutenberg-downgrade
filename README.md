@@ -53,11 +53,12 @@ Filters: `gutenberg_downgrade_active` (bool), `gutenberg_downgrade_bypass_pages`
 
 ## Development
 
-Everything is driven by Nix. Enter the shell with `nix develop` (or direnv): it provides PHP 8.4, Composer, Node 22, PHPStan, PHPCS, the git hooks (via prek), and copies the Gutenberg build into `assets/gutenberg/` (gitignored — `nix run .#sync-assets` refreshes it).
+Everything is driven by Nix. Enter the shell with `nix develop` (or direnv): it provides PHP 8.4, Composer, Node 22, PHPStan, PHPCS, statix, and copies the Gutenberg build into `assets/gutenberg/` (gitignored — `nix run .#sync-assets` refreshes it).
 
 ```sh
 composer install && composer install --working-dir=tests/tools && npm ci
 npm --prefix tests/playground ci
+uv tool install prek && prek install   # git hooks (.pre-commit-config.yaml); no nix needed
 
 composer phpstan                       # level 8, WordPress-aware
 composer phpcs                         # PSR-12

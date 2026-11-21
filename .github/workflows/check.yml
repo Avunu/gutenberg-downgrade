@@ -31,9 +31,9 @@ jobs:
   types:
     runs-on: ${{ github.event.pull_request.head.repo.fork && 'ubuntu-latest' || fromJSON('["self-hosted","nixos"]') }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7.0.1
 
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@v7.1.0
         with:
           node-version: 22
           cache: npm
@@ -60,9 +60,9 @@ jobs:
           - block-audit
           - manifest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7.0.1
 
-      - uses: DeterminateSystems/nix-installer-action@main
+      - uses: DeterminateSystems/nix-installer-action@v23
         if: runner.environment == 'github-hosted'
 
       # Evaluating the package set performs a full-history builtins.fetchGit
@@ -72,7 +72,7 @@ jobs:
         # The self-hosted runner keeps ~/.cache/nix between jobs; restoring a snapshot
         # over that live fetcher-cache database corrupts it.
         if: runner.environment == 'github-hosted'
-        uses: actions/cache@v6
+        uses: actions/cache@v6.1.0
         with:
           path: |
             ~/.cache/nix/gitv3
@@ -102,16 +102,16 @@ jobs:
       WP_VERSION: ${{ matrix.wp }}
       PHP_VERSION: ${{ matrix.php }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7.0.1
 
-      - uses: DeterminateSystems/nix-installer-action@main
+      - uses: DeterminateSystems/nix-installer-action@v23
         if: runner.environment == 'github-hosted'
 
       - name: Cache Nix git fetches
         # The self-hosted runner keeps ~/.cache/nix between jobs; restoring a snapshot
         # over that live fetcher-cache database corrupts it.
         if: runner.environment == 'github-hosted'
-        uses: actions/cache@v6
+        uses: actions/cache@v6.1.0
         with:
           path: |
             ~/.cache/nix/gitv3
@@ -123,7 +123,7 @@ jobs:
       # exactly what the release zip contains.
       - run: nix build .#default -L
 
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@v7.1.0
         with:
           node-version: 22
           cache: npm
@@ -135,7 +135,7 @@ jobs:
         run: npm --prefix tests/playground run test:e2e
 
       # The downloaded Chrome cannot run on NixOS; the self-hosted runner uses nixpkgs' Chromium.
-      - uses: browser-actions/setup-chrome@v2
+      - uses: browser-actions/setup-chrome@v2.2.0
         if: runner.environment == 'github-hosted'
         id: setup-chrome
       - id: nix-chrome

@@ -2,8 +2,8 @@ version: 2
 
 # Keeps every ecosystem in this repo up to date. Updates land on `main` automatically
 # (see .github/workflows/dependabot-auto-merge.yml); release-please remains the gate for
-# actually cutting a release. Dep bumps use the `chore` type so they never force a release
-# on their own — they ride along with the next real release.
+# actually cutting a release. Dep bumps use the `fix(deps)` type, so each merged bump ships
+# as a patch release.
 #
 # The Gutenberg 18.5.0 pin (nix/gutenberg-release.nix) is not a dependency in any of
 # these ecosystems and is never touched by Dependabot.
@@ -12,8 +12,10 @@ updates:
     directory: /
     schedule:
       interval: daily
+    cooldown:
+      default-days: 7
     commit-message:
-      prefix: chore
+      prefix: fix(deps)
     groups:
       github-actions:
         patterns: ["*"]
@@ -22,8 +24,10 @@ updates:
     directory: /
     schedule:
       interval: daily
+    cooldown:
+      default-days: 7
     commit-message:
-      prefix: chore
+      prefix: fix(deps)
     groups:
       composer:
         patterns: ["*"]
@@ -34,8 +38,10 @@ updates:
     directory: /tests/tools
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
     commit-message:
-      prefix: chore
+      prefix: fix(deps)
     groups:
       test-tools:
         patterns: ["*"]
@@ -44,8 +50,10 @@ updates:
     directory: /
     schedule:
       interval: daily
+    cooldown:
+      default-days: 7
     commit-message:
-      prefix: chore
+      prefix: fix(deps)
     groups:
       npm:
         patterns: ["*"]
@@ -55,8 +63,10 @@ updates:
     directory: /tests/playground
     schedule:
       interval: daily
+    cooldown:
+      default-days: 7
     commit-message:
-      prefix: chore
+      prefix: fix(deps)
     groups:
       playground:
         patterns: ["*"]
@@ -65,8 +75,10 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
     commit-message:
-      prefix: chore
+      prefix: fix(deps)
     groups:
       nix:
         patterns: ["*"]
