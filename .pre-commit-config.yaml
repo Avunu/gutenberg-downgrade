@@ -4,9 +4,10 @@
 # the whole project when a matching file is staged.
 #
 # The TypeScript hooks use node_modules, so run `npm ci` and `npm --prefix tests/playground ci`
-# first. The PHP hooks use vendor/ and tests/tools/vendor (phpstan bootstraps the test tools):
-# run `composer install` and `composer install --working-dir=tests/tools` first. statix is not
-# here: it is a Rust tool with no composer or npm package, so it stays in the nix dev shell only.
+# first. The PHP hook runs phpcs from tests/tools/vendor, the locked tools project: install it with
+# `composer install --working-dir=tests/tools`. phpstan is not here: the nix build reads
+# tests/tools/composer.lock, and phpstan is dist-only, so it cannot be locked there. statix is not
+# here either: it is a Rust tool with no composer or npm package, so it stays in the nix dev shell only.
 default_stages: [pre-commit]
 repos:
   - repo: local
@@ -41,18 +42,10 @@ repos:
         files: '^tests/playground/.*\.m?ts$'
         pass_filenames: false
 
-      - id: phpstan
-        name: phpstan
-        description: Static analysis at level 8 (phpstan.neon.dist).
-        entry: vendor/bin/phpstan analyse --memory-limit=2G
-        language: system
-        types: [php]
-        pass_filenames: false
-
       - id: phpcs-psr12
         name: phpcs
         description: PSR-12 (phpcs.xml.dist).
-        entry: vendor/bin/phpcs -q --standard=phpcs.xml.dist
+        entry: tests/tools/vendor/bin/phpcs -q --standard=phpcs.xml.dist
         language: system
         types: [php]
         pass_filenames: false
