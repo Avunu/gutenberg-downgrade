@@ -48,35 +48,47 @@ defined('WPINC') || exit;
 define('GUTENBERG_DOWNGRADE_FILE', __FILE__);
 define('GUTENBERG_DOWNGRADE_DIR', __DIR__ . '/');
 
+// Dependencies. The release zip bundles its own vendor/. Under Composer (a
+// Bedrock site, for example) the plugin directory has no vendor/ and the
+// project's autoloader, loaded before WordPress, already provides the classes.
 $gutenbergDowngradeAutoload = __DIR__ . '/vendor/autoload.php';
-if (!is_file($gutenbergDowngradeAutoload)) {
+if (is_file($gutenbergDowngradeAutoload)) {
+    require_once $gutenbergDowngradeAutoload;
+}
+
+if (!class_exists(\GutenbergDowngrade\Plugin::class)) {
     add_action('admin_notices', static function (): void {
-        echo '<div class="notice notice-error"><p><strong>Gutenberg Downgrade:</strong> dependencies are missing — run <code>composer install</code> or install the built release zip.</p></div>';
+        echo '<div class="notice notice-error"><p><strong>Gutenberg Downgrade:</strong> dependencies are missing — install the built release zip, or require <code>avunu/gutenberg-downgrade</code> with Composer.</p></div>';
     });
     return;
 }
-require_once $gutenbergDowngradeAutoload;
 
-// Self-update from GitHub releases. The built zip attached to each release bundles
-// vendor/ and assets/gutenberg/, so end users never need Composer or Nix.
-require_once __DIR__ . '/vendor/yahnis-elsts/plugin-update-checker/plugin-update-checker.php';
+// Self-update from GitHub releases, for installs of the release zip only. The
+// built zip attached to each release bundles vendor/ and assets/gutenberg/, so
+// end users never need Composer or Nix. A Composer-managed install is updated
+// by Composer, and a site where file modifications are off
+// (DISALLOW_FILE_MODS) cannot install updates at all, so neither loads it.
+if (is_file($gutenbergDowngradeAutoload) && wp_is_file_mod_allowed('gutenberg_downgrade_update_checker')) {
+    require_once __DIR__ . '/vendor/yahnis-elsts/plugin-update-checker/plugin-update-checker.php';
 
-$gutenbergDowngradeUpdateChecker = \YahnisElsts\PluginUpdateChecker\v5\PucFactory::buildUpdateChecker(
-    'https://github.com/Avunu/gutenberg-downgrade/',
-    __FILE__,
-    'gutenberg-downgrade'
-);
-// Download the built release asset, never GitHub's source tarball (which lacks
-// vendor/ and assets/gutenberg/). REQUIRE, not the default PREFER: a release
-// that has no zip yet — the suite failed after Release Please tagged it — must
-// offer no update at all rather than fall back to the tarball and leave the
-// site with a plugin that cannot load.
-// The constant is read off the instance: Vcs\Api only exists under the
-// version-suffixed (v5pX) namespace, which moves on every minor release.
-$gutenbergDowngradeVcsApi = $gutenbergDowngradeUpdateChecker->getVcsApi();
-$gutenbergDowngradeVcsApi->enableReleaseAssets(
-    '/gutenberg-downgrade\.zip$/',
-    $gutenbergDowngradeVcsApi::REQUIRE_RELEASE_ASSETS
-);
+    $gutenbergDowngradeUpdateChecker = \YahnisElsts\PluginUpdateChecker\v5\PucFactory::buildUpdateChecker(
+        'https://github.com/Avunu/gutenberg-downgrade/',
+        __FILE__,
+        'gutenberg-downgrade'
+    );
+    // Download the built release asset, never GitHub's source tarball (which lacks
+    // vendor/ and assets/gutenberg/). REQUIRE, not the default PREFER: a release
+    // that has no zip yet — the suite failed after Release Please tagged it — must
+    // offer no update at all rather than fall back to the tarball and leave the
+    // site with a plugin that cannot load.
+    // The constant is read off the instance: Vcs\Api only exists under the
+    // version-suffixed (v5pX) namespace, which moves on every minor release.
+    $gutenbergDowngradeVcsApi = $gutenbergDowngradeUpdateChecker->getVcsApi();
+    $gutenbergDowngradeVcsApi->enableReleaseAssets(
+        '/gutenberg-downgrade\.zip$/',
+        $gutenbergDowngradeVcsApi::REQUIRE_RELEASE_ASSETS
+    );
+}
+unset($gutenbergDowngradeAutoload);
 
 add_action('plugins_loaded', [\GutenbergDowngrade\Plugin::class, 'init']);
