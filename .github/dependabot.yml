@@ -40,6 +40,18 @@ updates:
       test-tools:
         patterns: ["*"]
 
+  # phpstan is locked in its own Composer project: the nix build reads tests/tools and the root
+  # lock, and phpstan is dist-only, so it cannot be locked in either (see tests/static-analysis).
+  - package-ecosystem: composer
+    directory: /tests/static-analysis
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: chore
+    groups:
+      static-analysis:
+        patterns: ["*"]
+
   - package-ecosystem: npm
     directory: /
     schedule:

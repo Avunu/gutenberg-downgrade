@@ -1,0 +1,12 @@
+{
+    "name": "avunu/gutenberg-downgrade-static-analysis",
+    "description": "Holds the locked static-analysis tool (phpstan), kept out of the nix build's lock files.",
+    "type": "project",
+    "license": "GPL-2.0-or-later",
+    "config": {
+        "sort-packages": true
+    },
+    "require": {
+        "phpstan/phpstan": "2.2.16"
+    }
+}
