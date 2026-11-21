@@ -49,7 +49,7 @@ updates:
     cooldown:
       default-days: 7
     commit-message:
-      prefix: fix(deps)
+      prefix: chore
     groups:
       static-analysis:
         patterns: ["*"]
