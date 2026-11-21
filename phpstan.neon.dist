@@ -55,7 +55,7 @@ parameters:
             message: '#WP_Block_Patterns_Registry::\$items#'
             path: tests/Unit/CoreNeutralizerTest.php
         # PucFactory::buildUpdateChecker() is typed as a broad union; narrowing it
-        # would require referencing the version-suffixed (v5pX) class names, which
+        # would require referencing the version-suffixed (v6pX) class names, which
         # break on every plugin-update-checker minor release.
         -
             message: '#Call to an undefined method YahnisElsts\\PluginUpdateChecker.*#'

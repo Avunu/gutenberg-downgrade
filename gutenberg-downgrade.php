@@ -71,7 +71,7 @@ if (!class_exists(\GutenbergDowngrade\Plugin::class)) {
 if (is_file($gutenbergDowngradeAutoload) && wp_is_file_mod_allowed('gutenberg_downgrade_update_checker')) {
     require_once __DIR__ . '/vendor/yahnis-elsts/plugin-update-checker/plugin-update-checker.php';
 
-    $gutenbergDowngradeUpdateChecker = \YahnisElsts\PluginUpdateChecker\v5\PucFactory::buildUpdateChecker(
+    $gutenbergDowngradeUpdateChecker = \YahnisElsts\PluginUpdateChecker\v6\PucFactory::buildUpdateChecker(
         'https://github.com/Avunu/gutenberg-downgrade/',
         __FILE__,
         'gutenberg-downgrade'
@@ -82,7 +82,7 @@ if (is_file($gutenbergDowngradeAutoload) && wp_is_file_mod_allowed('gutenberg_do
     // offer no update at all rather than fall back to the tarball and leave the
     // site with a plugin that cannot load.
     // The constant is read off the instance: Vcs\Api only exists under the
-    // version-suffixed (v5pX) namespace, which moves on every minor release.
+    // version-suffixed (v6pX) namespace, which moves on every minor release.
     $gutenbergDowngradeVcsApi = $gutenbergDowngradeUpdateChecker->getVcsApi();
     $gutenbergDowngradeVcsApi->enableReleaseAssets(
         '/gutenberg-downgrade\.zip$/',
