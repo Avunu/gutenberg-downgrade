@@ -16,10 +16,9 @@
   },
   "require-dev": {
     "php-stubs/wordpress-stubs": "^7.0",
+    "phpstan/phpstan": "2.2.16",
+    "squizlabs/php_codesniffer": "3.13.6",
     "szepeviktor/phpstan-wordpress": "^2.0"
-  },
-  "replace": {
-    "phpstan/phpstan": "*"
   },
   "autoload": {
     "psr-4": {
