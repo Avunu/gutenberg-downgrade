@@ -30,6 +30,16 @@ Download `gutenberg-downgrade.zip` from the [latest release](https://github.com/
 
 A git checkout is not a working plugin: `vendor/` and `assets/gutenberg/` are produced by the build (see Development).
 
+### With Composer
+
+```bash
+composer require avunu/gutenberg-downgrade
+```
+
+The package has type `wordpress-plugin`, so `composer/installers` puts it in the plugins directory (`web/app/plugins/gutenberg-downgrade` on Bedrock), and its classes load through the project's autoloader. Under Composer, and on any site with `DISALLOW_FILE_MODS`, the GitHub self-updater is not loaded.
+
+The Composer package is built from the git tag, so like a git checkout it has **no `assets/gutenberg/`**: the plugin loads, shows the "bundled Gutenberg build is missing" notice and stays inactive until that directory is provided — the wordpress.org `gutenberg` 18.5.0 zip unpacked there, plus `manifest.php` from `bin/generate-manifest.php`, exactly as `nix build` assembles it. Use the release zip where that is not done by the site's build.
+
 ## Configuration
 
 Optional constants in `wp-config.php`:
@@ -85,7 +95,7 @@ WP_VERSION=7.1 npm run test            # or latest (default), nightly
 
 ## Releasing
 
-Conventional Commits on `main` feed [Release Please](https://github.com/googleapis/release-please). Merging its release PR bumps `composer.json`, the plugin header and `CHANGELOG.md` and creates a draft release; the full test suite then runs against that commit and, only if it passes, the Nix-built zip is attached and the release published (which creates the tag). The zip is the asset installed sites update from — the update checker requires it, so a draft, or a release without one, is never offered.
+Conventional Commits on `main` feed [Release Please](https://github.com/googleapis/release-please). Merging its release PR bumps `.release-please-manifest.json`, the plugin header and `CHANGELOG.md` and creates a draft release (`composer.json` has no version: the tag, created on publish, is the Packagist release); the full test suite then runs against that commit and, only if it passes, the Nix-built zip is attached and the release published (which creates the tag). The zip is the asset installed sites update from — the update checker requires it, so a draft, or a release without one, is never offered.
 
 ## License
 
