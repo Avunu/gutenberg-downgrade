@@ -12,8 +12,10 @@ updates:
     directory: /
     schedule:
       interval: daily
+    cooldown:
+      default-days: 7
     commit-message:
-      prefix: chore
+      prefix: fix(deps)
     groups:
       github-actions:
         patterns: ["*"]
@@ -22,8 +24,10 @@ updates:
     directory: /
     schedule:
       interval: daily
+    cooldown:
+      default-days: 7
     commit-message:
-      prefix: chore
+      prefix: fix(deps)
     groups:
       composer:
         patterns: ["*"]
@@ -34,8 +38,10 @@ updates:
     directory: /tests/tools
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
     commit-message:
-      prefix: chore
+      prefix: fix(deps)
     groups:
       test-tools:
         patterns: ["*"]
@@ -58,8 +64,10 @@ updates:
     directory: /
     schedule:
       interval: daily
+    cooldown:
+      default-days: 7
     commit-message:
-      prefix: chore
+      prefix: fix(deps)
     groups:
       npm:
         patterns: ["*"]
@@ -69,8 +77,10 @@ updates:
     directory: /tests/playground
     schedule:
       interval: daily
+    cooldown:
+      default-days: 7
     commit-message:
-      prefix: chore
+      prefix: fix(deps)
     groups:
       playground:
         patterns: ["*"]
@@ -79,8 +89,10 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
     commit-message:
-      prefix: chore
+      prefix: fix(deps)
     groups:
       nix:
         patterns: ["*"]
