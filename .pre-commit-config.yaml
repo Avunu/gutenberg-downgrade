@@ -1,0 +1,51 @@
+# Git hooks, run by prek (https://prek.j178.dev): `uv tool install prek && prek install`.
+# They replace the git-hooks.nix hooks of the same names. Each hook is one check, at the
+# same stage (pre-commit) and scope as before. `pass_filenames: false` hooks still run over
+# the whole project when a matching file is staged.
+#
+# The TypeScript hooks use node_modules, so run `npm ci` and `npm --prefix tests/playground ci`
+# first. phpstan, phpcs and statix are not here: their tools come only from the nix dev shell,
+# and no locked non-nix source provides them.
+default_stages: [pre-commit]
+repos:
+  - repo: local
+    hooks:
+      - id: oxfmt
+        name: oxfmt
+        description: Format staged JavaScript and TypeScript in place.
+        entry: ./node_modules/.bin/oxfmt
+        language: system
+        types_or: [javascript, jsx, ts, tsx]
+
+      - id: oxlint
+        name: oxlint
+        description: Lint staged JavaScript and TypeScript.
+        entry: ./node_modules/.bin/oxlint
+        language: system
+        types_or: [javascript, jsx, ts, tsx]
+
+      - id: tsc
+        name: tsc
+        description: TypeScript type-check of the browser shim and the playground harness.
+        entry: ./node_modules/.bin/tsc --noEmit
+        language: system
+        files: '\.(m?ts|js|json)$'
+        pass_filenames: false
+
+      - id: tsc-harness
+        name: tsc (playground harness)
+        description: TypeScript type-check of the playground harness.
+        entry: ./node_modules/.bin/tsc --noEmit -p tests/playground/tsconfig.json
+        language: system
+        files: '^tests/playground/.*\.m?ts$'
+        pass_filenames: false
+
+  - repo: https://github.com/NixOS/nixfmt
+    rev: v1.5.0
+    hooks:
+      - id: nixfmt
+
+  - repo: https://github.com/astro/deadnix
+    rev: v1.3.2
+    hooks:
+      - id: deadnix

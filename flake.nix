@@ -5,10 +5,6 @@
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     flake-utils.url = "github:numtide/flake-utils";
     composition-c4.url = "github:fossar/composition-c4";
-    git-hooks = {
-      url = "github:cachix/git-hooks.nix";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
   };
 
   outputs =
@@ -17,7 +13,6 @@
       nixpkgs,
       flake-utils,
       composition-c4,
-      git-hooks,
     }:
     flake-utils.lib.eachDefaultSystem (
       system:
@@ -232,62 +227,6 @@
           '';
         };
 
-        # ------------------------------------------------------------------ #
-        # git-hooks.nix: the same gates as CI, before every commit.           #
-        # Run by prek (a pre-commit reimplementation: no Python, fast,        #
-        # reads the same .pre-commit-config.yaml).                            #
-        # Not wired into `checks`: the JS hooks shell out to node_modules,    #
-        # which is gitignored; checks.* below cover PHP hermetically.          #
-        # ------------------------------------------------------------------ #
-        pre-commit-check = git-hooks.lib.${system}.run {
-          src = self;
-          package = pkgs.prek;
-          hooks = {
-            oxfmt = {
-              enable = true;
-              package = null;
-              settings.binPath = "./node_modules/.bin/oxfmt";
-            };
-            oxlint = {
-              enable = true;
-              package = null;
-              settings.binPath = "./node_modules/.bin/oxlint";
-            };
-            tsc = {
-              enable = true;
-              name = "tsc";
-              description = "TypeScript type-check of the shim and the playground harness.";
-              entry = "./node_modules/.bin/tsc --noEmit";
-              files = "\\.(m?ts|js|json)$";
-              pass_filenames = false;
-            };
-            tsc-harness = {
-              enable = true;
-              name = "tsc (playground harness)";
-              entry = "./node_modules/.bin/tsc --noEmit -p tests/playground/tsconfig.json";
-              files = "^tests/playground/.*\\.m?ts$";
-              pass_filenames = false;
-            };
-            phpstan = {
-              enable = true;
-              package = pkgs.phpstan;
-              entry = "${pkgs.phpstan}/bin/phpstan analyse --memory-limit=2G";
-              pass_filenames = false;
-            };
-            phpcs-psr12 = {
-              enable = true;
-              name = "phpcs";
-              description = "PSR-12 (phpcs.xml.dist).";
-              entry = "${pkgs.php84Packages.php-codesniffer}/bin/phpcs -q --standard=phpcs.xml.dist";
-              files = "\\.php$";
-              pass_filenames = false;
-            };
-            nixfmt.enable = true;
-            statix.enable = true;
-            deadnix.enable = true;
-          };
-        };
-
         # Copies the assembled Gutenberg build into the working tree so the
         # plugin can run from a checkout (Playground mounts, `composer phpstan`,
         # the block audit). The directory is gitignored.
@@ -363,17 +302,18 @@
       in
       {
         devShells.default = pkgs.mkShell {
-          packages = pre-commit-check.enabledPackages ++ [
+          # The git hooks (.pre-commit-config.yaml) read phpstan, phpcs and statix from PATH.
+          packages = [
             php
             php.packages.composer
             pkgs.phpstan
             pkgs.php84Packages.php-codesniffer
+            pkgs.statix
             nodejs
             syncAssets
           ];
 
           shellHook = ''
-            ${pre-commit-check.shellHook}
             sync-assets
             echo "PHP $(php --version | head -1)"
             echo "Node $(node --version)"
