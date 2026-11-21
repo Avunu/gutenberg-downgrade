@@ -57,11 +57,12 @@
 
         # ------------------------------------------------------------------ #
         # Plugin metadata, read once and shared by packages/checks.           #
-        # composer.json owns the version (Release Please bumps it); the       #
-        # plugin header owns the WordPress compatibility range.               #
+        # The Release Please manifest owns the version (composer.json has     #
+        # none: Packagist takes versions from git tags); the plugin header    #
+        # owns the WordPress compatibility range.                             #
         # ------------------------------------------------------------------ #
         composerData = builtins.fromJSON (builtins.readFile ./composer.json);
-        inherit (composerData) version;
+        version = (builtins.fromJSON (builtins.readFile ./.release-please-manifest.json)).".";
 
         pname = "gutenberg-downgrade";
         mainFile = "gutenberg-downgrade.php";
@@ -162,6 +163,9 @@
             pkgs.c4.composerSetupHook
           ];
 
+          # composer.json carries no version and the sandbox has no .git.
+          COMPOSER_ROOT_VERSION = version;
+
           buildPhase = ''
             runHook preBuild
             composer --no-ansi install --no-dev --no-interaction --optimize-autoloader
@@ -188,8 +192,8 @@
                 || { echo "${mainFile} is missing the '$header:' plugin header line" >&2; exit 1; }
             done
 
-            # composer.json is the single source of truth for the version (Release
-            # Please bumps it); WordPress and the update checker read the header.
+            # The Release Please manifest is the single source of truth for the
+            # version; WordPress and the update checker read the header.
             sed -i -E "s|^([[:space:]]*\* Version:[[:space:]]*).*|\1${version}|" "$pluginDir/${mainFile}"
             sed -i -E "s|^([[:space:]]*\* Tested up to:[[:space:]]*).*|\1${wpTested}|" "$pluginDir/${mainFile}"
             sed -i -E "s|^([[:space:]]*\* Requires at least:[[:space:]]*).*|\1${wpRequires}|" "$pluginDir/${mainFile}"
@@ -421,7 +425,7 @@
                 fail=1
               fi
             }
-            check 'Version'           "$(get 'Version')"           '${version}'    'composer.json version'
+            check 'Version'           "$(get 'Version')"           '${version}'    '.release-please-manifest.json'
             check 'Tested up to'      "$(get 'Tested up to')"      '${wpTested}'   'the value Nix parsed'
             check 'Requires at least' "$(get 'Requires at least')" '${wpRequires}' 'the value Nix parsed'
             [ "$fail" -eq 0 ] || exit 1
