@@ -2,8 +2,8 @@ version: 2
 
 # Keeps every ecosystem in this repo up to date. Updates land on `main` automatically
 # (see .github/workflows/dependabot-auto-merge.yml); release-please remains the gate for
-# actually cutting a release. Dep bumps use the `chore` type so they never force a release
-# on their own — they ride along with the next real release.
+# actually cutting a release. Dep bumps use the `fix(deps)` type, so each merged bump ships
+# as a patch release.
 #
 # The Gutenberg 18.5.0 pin (nix/gutenberg-release.nix) is not a dependency in any of
 # these ecosystems and is never touched by Dependabot.
@@ -49,7 +49,7 @@ updates:
     cooldown:
       default-days: 7
     commit-message:
-      prefix: chore
+      prefix: fix(deps)
     groups:
       static-analysis:
         patterns: ["*"]
