@@ -108,14 +108,15 @@
         # ------------------------------------------------------------------ #
         # PHP / Composer vendor dependencies.                                 #
         # c4.fetchComposerDeps reads composer.lock per-package — no hash.     #
-        # It fetches packages-dev too (the PHPStan WordPress stubs), which     #
-        # the checks rely on; `composer install --no-dev` keeps them out of   #
-        # the zip.                                                            #
+        # The root manifest has no dev packages: the PHPStan WordPress stubs  #
+        # live in tests/tools with the test runners, because composer.json   #
+        # is published to Packagist.                                          #
         # ------------------------------------------------------------------ #
         composerDeps = pkgs.c4.fetchComposerDeps { inherit src; };
 
-        # The test runners (PHPUnit, Brain Monkey) live in their own Composer
-        # project so they are never fetched for `nix build .#zip`.
+        # The test runners (PHPUnit, Brain Monkey) and the PHPStan WordPress
+        # stubs live in their own Composer project so they are never fetched
+        # for `nix build .#zip`, nor published with the plugin.
         testTools = stdenvNoCC.mkDerivation {
           pname = "${pname}-test-tools";
           inherit version;
@@ -210,32 +211,6 @@
 
         pluginDir = "${pluginPackage}/share/wordpress/plugins/${pname}";
 
-        # vendor/ with the dev packages (WordPress stubs, phpstan-wordpress) for
-        # the static-analysis checks; the plugin package itself is --no-dev.
-        devVendor = stdenvNoCC.mkDerivation {
-          pname = "${pname}-dev-vendor";
-          inherit version src composerDeps;
-
-          nativeBuildInputs = [
-            php
-            php.packages.composer
-            pkgs.c4.composerSetupHook
-          ];
-
-          buildPhase = ''
-            runHook preBuild
-            composer --no-ansi install --no-interaction
-            runHook postBuild
-          '';
-
-          installPhase = ''
-            runHook preInstall
-            mkdir -p "$out"
-            cp -rL vendor "$out/"
-            runHook postInstall
-          '';
-        };
-
         # ------------------------------------------------------------------ #
         # git-hooks.nix: the same gates as CI, before every commit.           #
         # Run by prek (a pre-commit reimplementation: no Python, fast,        #
@@ -275,7 +250,7 @@
             phpstan = {
               enable = true;
               package = pkgs.phpstan;
-              entry = "${pkgs.phpstan}/bin/phpstan analyse --memory-limit=2G";
+              entry = "${pkgs.phpstan}/bin/phpstan analyse --autoload-file=tests/tools/vendor/autoload.php --memory-limit=2G";
               pass_filenames = false;
             };
             phpcs-psr12 = {
@@ -332,19 +307,23 @@
           # nodes for the result cache — the 6 MB WordPress stubs included, at
           # over 2 GB, past the memory limit. The copy above is a plain install,
           # not a path one, so drop the claim.
+          # The same applies to tests/tools/vendor, which now carries the stubs.
+          cp -rL ${testTools}/vendor tests/tools/vendor
+          chmod -R u+w tests/tools/vendor
           php -r '
-            $file = "vendor/composer/installed.json";
-            $installed = json_decode(file_get_contents($file), true, 512, JSON_THROW_ON_ERROR);
-            foreach ($installed["packages"] as &$package) {
-              if (($package["dist"]["type"] ?? null) === "path") {
-                unset($package["dist"]);
+            foreach (["vendor/composer/installed.json", "tests/tools/vendor/composer/installed.json"] as $file) {
+              $installed = json_decode(file_get_contents($file), true, 512, JSON_THROW_ON_ERROR);
+              foreach ($installed["packages"] as &$package) {
+                if (($package["dist"]["type"] ?? null) === "path") {
+                  unset($package["dist"]);
+                }
               }
+              unset($package);
+              file_put_contents($file, json_encode($installed, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
             }
-            file_put_contents($file, json_encode($installed, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
           '
           cp -r ${gutenbergAssets} ./assets/gutenberg
           chmod -R u+w ./assets/gutenberg
-          ln -s ${testTools}/vendor tests/tools/vendor
           export HOME="$TMPDIR"
         '';
 
@@ -444,8 +423,11 @@
               }
               ''
                 set -euo pipefail
-                ${checkWorkTree devVendor}
-                phpstan analyse --no-progress --no-ansi --memory-limit=2G
+                ${checkWorkTree pluginDir}
+                # The WordPress extension's rule classes come from tests/tools;
+                # --autoload-file loads them before PHPStan builds its container.
+                phpstan analyse --no-progress --no-ansi --memory-limit=2G \
+                  --autoload-file=tests/tools/vendor/autoload.php
                 touch "$out"
               '';
 
@@ -485,7 +467,7 @@
               }
               ''
                 set -euo pipefail
-                ${checkWorkTree devVendor}
+                ${checkWorkTree pluginDir}
                 phpstan analyse -c tests/audit/phpstan-blocks.neon --no-progress --no-ansi \
                   --error-format=json --memory-limit=2G > "$TMPDIR/phpstan-blocks.json" || true
                 php tests/audit/check-blocks.php --phpstan-json "$TMPDIR/phpstan-blocks.json"

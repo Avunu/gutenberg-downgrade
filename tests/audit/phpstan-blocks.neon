@@ -5,7 +5,7 @@
 # whether it would pass the plugin's own level-8 bar. tests/audit/check-blocks.php
 # reconciles the findings with config/blocks.php.
 #
-#   composer audit:blocks      (working tree; needs vendor/ and assets/gutenberg/)
+#   composer audit:blocks      (working tree; needs tests/tools/vendor/ and assets/gutenberg/)
 #   nix build .#checks.x86_64-linux.block-audit -L
 parameters:
     level: 0
@@ -16,7 +16,7 @@ parameters:
         - ../../assets/gutenberg/build/block-library/blocks
         - ../../assets/gutenberg/build/widgets/blocks
     scanFiles:
-        - ../../vendor/php-stubs/wordpress-stubs/wordpress-stubs.php
+        - ../tools/vendor/php-stubs/wordpress-stubs/wordpress-stubs.php
     # The lib/ helpers this plugin re-provides for the block files.
     bootstrapFiles:
         - ../../src/shims.php
