@@ -1,1 +1,20 @@
 * text=auto eol=lf
+
+# Kept out of the archive Packagist installs (GitHub's zipball of the tag):
+# a Composer install gets the plugin itself, not its development tooling.
+/.github export-ignore
+/.envrc export-ignore
+/.npmrc export-ignore
+/.oxfmtrc.json export-ignore
+/.oxlintrc.json export-ignore
+/.release-please-manifest.json export-ignore
+/flake.lock export-ignore
+/flake.nix export-ignore
+/nix export-ignore
+/phpcs.xml.dist export-ignore
+/phpstan-bootstrap.php export-ignore
+/phpstan.neon.dist export-ignore
+/release-please-config.json export-ignore
+/tests export-ignore
+/tsconfig.json export-ignore
+/types export-ignore

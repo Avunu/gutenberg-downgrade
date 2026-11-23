@@ -1,8 +1,14 @@
 {
   "name": "avunu/gutenberg-downgrade",
   "description": "Load the Gutenberg 18.5 (WordPress 6.6 series) block editor on current WordPress releases, for sites whose page builder clashes with the modern editor. Configure via wp-config.php — no admin settings.",
+  "keywords": [
+    "wordpress",
+    "wordpress-plugin",
+    "gutenberg",
+    "block-editor"
+  ],
+  "homepage": "https://github.com/Avunu/gutenberg-downgrade",
   "type": "wordpress-plugin",
-  "version": "1.1.4",
   "license": "GPL-2.0-or-later",
   "authors": [
     {
@@ -12,15 +18,11 @@
   ],
   "require": {
     "php": ">=8.3",
-    "yahnis-elsts/plugin-update-checker": "^5.6"
+    "composer/installers": "^2.3",
+    "yahnis-elsts/plugin-update-checker": "^6.0"
   },
-  "require-dev": {
-    "php-stubs/wordpress-stubs": "^7.0",
-    "szepeviktor/phpstan-wordpress": "^2.0"
-  },
-  "replace": {
-    "phpstan/phpstan": "*"
-  },
+  "minimum-stability": "stable",
+  "prefer-stable": true,
   "autoload": {
     "psr-4": {
       "GutenbergDowngrade\\": "src/"
@@ -32,10 +34,13 @@
     "platform": {
       "php": "8.3.0"
     },
-    "platform-check": false
+    "platform-check": false,
+    "allow-plugins": {
+      "composer/installers": true
+    }
   },
   "scripts": {
-    "phpstan": "phpstan analyse --memory-limit=2G",
+    "phpstan": "phpstan analyse --autoload-file=tests/tools/vendor/autoload.php --memory-limit=2G",
     "phpcs": "phpcs -q --standard=phpcs.xml.dist",
     "audit:blocks": "phpstan analyse -c tests/audit/phpstan-blocks.neon --memory-limit=2G && php tests/audit/check-blocks.php"
   }

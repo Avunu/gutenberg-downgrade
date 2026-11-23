@@ -145,11 +145,13 @@ interface SiteEditorState {
 	screen: string | null;
 	canvas: boolean;
 	canvasText: string;
+	/** Titles of the published `wp_navigation` menus. */
+	menus: string[];
 }
 
 /** The URL the 18.5 router ended up on, and what it rendered. */
 async function siteEditorState(page: Page): Promise<SiteEditorState> {
-	return page.evaluate(() => ({
+	return page.evaluate(async () => ({
 		search: decodeURIComponent(location.search),
 		title: document.title,
 		screen:
@@ -160,6 +162,13 @@ async function siteEditorState(page: Page): Promise<SiteEditorState> {
 			(
 				document.querySelector('iframe[name="editor-canvas"]') as HTMLIFrameElement | null
 			)?.contentDocument?.body?.innerText.slice(0, 3000) ?? "",
+		menus: (
+			await (
+				globalThis as unknown as {
+					wp: { apiFetch: (o: { path: string }) => Promise<{ title: { raw: string } }[]> };
+				}
+			).wp.apiFetch({ path: "/wp/v2/navigation?status=publish&context=edit&_fields=title" })
+		).map((m) => m.title.raw),
 	}));
 }
 
@@ -500,7 +509,12 @@ try {
 		[
 			"site-editor.php?p=%2Fnavigation",
 			"navigation",
-			(s) => s.screen === "Navigation" && s.search.includes("postType=wp_navigation"),
+			// With exactly one menu, 18.5 opens it straight away, titled with its name.
+			// The header's fallback menu is that one: "Navigation" up to 7.1, "Main" after
+			// wordpress-develop f2d9abf5ad.
+			(s) =>
+				s.search.includes("postType=wp_navigation") &&
+				(s.menus.length === 1 ? s.screen === s.menus[0] : s.screen === "Navigation"),
 		],
 		[
 			"site-editor.php?p=%2Fpage",
